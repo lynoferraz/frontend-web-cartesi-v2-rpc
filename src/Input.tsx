@@ -14,7 +14,12 @@ import React, { useState } from "react";
 import { ethers } from "ethers";
 import { useRollups } from "./useRollups";
 import { useWallets } from "@web3-onboard/react";
+import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
+import configFile from "./config.json";
+
+import { createWalletClient, custom } from "viem";
+import { sepolia } from "viem/chains";
 
 interface IInputPropos {
     dappAddress: string 
@@ -23,6 +28,7 @@ interface IInputPropos {
 export const Input: React.FC<IInputPropos> = (propos) => {
     const rollups = useRollups(propos.dappAddress);
     const [connectedWallet] = useWallets();
+    const [{ connectedChain }] = useSetChain();
     const provider = new ethers.providers.Web3Provider(
         connectedWallet.provider
     );
@@ -48,6 +54,95 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             } catch (e) {
                 console.log(`${e}`);
             }
+        }
+    };
+
+    const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
+
+    let typedData = {
+        account: "0x" as any,
+        domain: {
+            name: "EspressoM",
+            version: "1",
+            chainId: 11155111, // use hook
+            verifyingContract:
+                "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+        } as const,
+        types: {
+            EIP712Domain: [
+                { name: "name", type: "string" },
+                { name: "version", type: "string" },
+                { name: "chainId", type: "uint32" },
+                { name: "verifyingContract", type: "address" },
+            ],
+            EspressoMessage: [
+                { name: "nonce", type: "uint32" },
+                { name: "payload", type: "string" },
+            ],
+        } as const,
+        primaryType: "EspressoMessage" as const,
+        message: {nonce: 0, payload: ""},
+    }
+
+    const fetchNonce = async (sender: string) => {
+        const config: any = configFile;
+        const url = `${config[connectedChain!.id].graphqlAPIURL}/graphql`;
+        
+        const query = `
+            {inputs(where: {msgSender: "${sender}"}) {
+                totalCount
+        }}`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query })
+        });
+
+        const responseData = await response.json();
+        const nextNonce = responseData.data.inputs.totalCount + 1;
+        return nextNonce
+    }
+
+    const submitToEspresso = async (namespace: number, payload: string) => {
+        const content = JSON.stringify({
+            "namespace": namespace,
+            "payload": ethers.utils.base64.encode(ethers.utils.toUtf8Bytes(payload)) 
+        });
+        const response = await fetch(espressoUrl, {
+            method: 'POST',
+            body: content,
+            headers: {'Content-Type': 'application/json'}
+        });
+        console.log(await response.text())
+        if (!response.ok) { console.log("submit to Espresso failed") }
+    }
+
+    const addEspressoInput = async (namespace: number, payload: string) => {
+        if (rollups && provider) {
+            const walletClient: any = createWalletClient({
+                chain: sepolia,
+                transport: custom(window.ethereum!),
+            })
+            const [account] = await walletClient.getAddresses()
+            typedData.account = account
+
+            const message = {
+                nonce: await fetchNonce(account.toString()),
+                payload: `${payload}`,
+            }
+            typedData.message = message
+
+            const signature = await walletClient.signTypedData(typedData);
+            const signedMessage = JSON.stringify({
+                signature,
+                typedData: btoa(JSON.stringify(typedData)),
+            })
+            // console.log(signedMessage)
+            
+            await submitToEspresso(namespace, signedMessage)
         }
     };
 
@@ -211,6 +306,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     
     const [input, setInput] = useState<string>("");
     const [hexInput, setHexInput] = useState<boolean>(false);
+    const [espressoNamespace, setEspressoNamespace] = useState<number>(0);
+    const [espressoPayload, setEspressoPayload] = useState<string>("");
     const [erc20Amount, setErc20Amount] = useState<number>(0);
     const [erc20Token, setErc20Token] = useState<string>("");
     const [erc721Id, setErc721Id] = useState<number>(0);
@@ -242,6 +339,23 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 />
                 <input type="checkbox" checked={hexInput} onChange={(e) => setHexInput(!hexInput)}/><span>Raw Hex </span>
                 <button onClick={() => addInput(input)} disabled={!rollups}>
+                    Send
+                </button>
+                <br /><br />
+            </div>
+            <div>
+                Send Espresso Input <br />
+                Espresso Namespace: <input
+                    type="number"
+                    value={espressoNamespace}
+                    onChange={(e) => setEspressoNamespace(Number(e.target.value))}
+                />
+                Payload: <input
+                    type="text"
+                    value={espressoPayload}
+                    onChange={(e) => setEspressoPayload(e.target.value)}
+                />
+                <button onClick={() => addEspressoInput(espressoNamespace, espressoPayload)} disabled={!rollups}>
                     Send
                 </button>
                 <br /><br />
