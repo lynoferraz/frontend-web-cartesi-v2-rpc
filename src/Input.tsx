@@ -48,7 +48,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             try {
                 let payload = ethers.utils.toUtf8Bytes(str);
                 if (hexInput) {
-                    payload = ethers.utils.arrayify(str);
+                    payload = ethers.utils.arrayify('0x'+str);
                 }
                 await rollups.inputContract.addInput(propos.dappAddress, payload);
             } catch (e) {
@@ -129,9 +129,13 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             const [account] = await walletClient.getAddresses()
             typedData.account = account
 
+            if (hexEspressoInput) {
+                payload = '0x' + payload
+            }
+
             const message = {
                 nonce: await fetchNonce(account.toString()),
-                payload: `${payload}`,
+                payload: payload,
             }
             typedData.message = message
 
@@ -306,6 +310,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     
     const [input, setInput] = useState<string>("");
     const [hexInput, setHexInput] = useState<boolean>(false);
+    const [hexEspressoInput, setHexEspressoInput] = useState<boolean>(false);
     const [espressoNamespace, setEspressoNamespace] = useState<number>(0);
     const [espressoPayload, setEspressoPayload] = useState<string>("");
     const [erc20Amount, setErc20Amount] = useState<number>(0);
@@ -355,6 +360,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     value={espressoPayload}
                     onChange={(e) => setEspressoPayload(e.target.value)}
                 />
+                <input type="checkbox" checked={hexEspressoInput} onChange={(e) => setHexEspressoInput(!hexEspressoInput)}/><span>Raw Hex </span>
                 <button onClick={() => addEspressoInput(espressoNamespace, espressoPayload)} disabled={!rollups}>
                     Send
                 </button>
