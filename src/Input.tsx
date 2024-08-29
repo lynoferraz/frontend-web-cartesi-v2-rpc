@@ -89,7 +89,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         const url = `${config[connectedChain!.id].graphqlAPIURL}/graphql`;
         
         const query = `
-            {inputs(where: {msgSender: "${sender}"}) {
+            {inputs(where: {msgSender: "${sender}" type: "Espresso"}) {
                 totalCount
         }}`;
 
