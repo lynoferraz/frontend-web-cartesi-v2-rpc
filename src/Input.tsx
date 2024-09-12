@@ -18,7 +18,7 @@ import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
 import configFile from "./config.json";
 
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, keccak256 } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputPropos {
@@ -145,6 +145,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 typedData: btoa(JSON.stringify(typedData)),
             })
             // console.log(signedMessage)
+
+            setEspressoInputID(keccak256(signature))
             
             await submitToEspresso(namespace, signedMessage)
         }
@@ -325,6 +327,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     const [erc1155Amounts, setErc1155Amounts] = useState<number[]>([]);
     const [erc1155IdsStr, setErc1155IdsStr] = useState<string>("[]");
     const [erc1155AmountsStr, setErc1155AmountsStr] = useState<string>("[]");
+    const [espressoInputID, setEspressoInputID] = useState<string>("");
 
     return (
         <div>
@@ -364,7 +367,9 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <button onClick={() => addEspressoInput(espressoNamespace, espressoPayload)} disabled={!rollups}>
                     Send
                 </button>
-                <br /><br />
+                <br />
+                {espressoInputID && <div>Input ID: {espressoInputID}</div>}
+                <br />
             </div>
             <div>
                 Deposit Ether <br />
