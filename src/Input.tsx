@@ -58,13 +58,14 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     };
 
     const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
+    const nonodoPaioUrl = "http://localhost:8080/transactions"
 
     let typedData = {
         account: "0x" as any,
         domain: {
-            name: "EspressoM",
+            name: "AvailM",
             version: "1",
-            chainId: 11155111, // use hook
+            chainId: 31337, // use hook
             verifyingContract:
                 "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
         } as const,
@@ -75,13 +76,15 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 { name: "chainId", type: "uint32" },
                 { name: "verifyingContract", type: "address" },
             ],
-            EspressoMessage: [
+            CartesiMessage: [
+                { name: "app", type: "address" },
                 { name: "nonce", type: "uint32" },
-                { name: "payload", type: "string" },
+                { name: "max_gas_price", type: "uint128" },
+                { name: "data", type: "string" },
             ],
         } as const,
-        primaryType: "EspressoMessage" as const,
-        message: {nonce: 0, payload: ""},
+        primaryType: "CartesiMessage" as const,
+        message: {nonce: 0, data: ""},
     }
 
     const fetchNonce = async (sender: string) => {
@@ -106,21 +109,17 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         return nextNonce
     }
 
-    const submitToEspresso = async (namespace: number, payload: string) => {
-        const content = JSON.stringify({
-            "namespace": namespace,
-            "payload": ethers.utils.base64.encode(ethers.utils.toUtf8Bytes(payload)) 
-        });
-        const response = await fetch(espressoUrl, {
+    const submitToPaio = async (submitToAvail: any) => {
+        const response = await fetch(nonodoPaioUrl, {
             method: 'POST',
-            body: content,
+            body: JSON.stringify(submitToAvail),
             headers: {'Content-Type': 'application/json'}
         });
         console.log(await response.text())
-        if (!response.ok) { console.log("submit to Espresso failed") }
+        if (!response.ok) { console.log("submit to Paio failed") }
     }
 
-    const addEspressoInput = async (namespace: number, payload: string) => {
+    const addPaioInput = async (namespace: string, payload: string) => {
         if (rollups && provider) {
             const walletClient: any = createWalletClient({
                 chain: sepolia,
@@ -129,26 +128,29 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             const [account] = await walletClient.getAddresses()
             typedData.account = account
 
-            if (hexEspressoInput) {
+            if (cartesiTxId) {
                 payload = '0x' + payload
             }
 
             const message = {
-                nonce: await fetchNonce(account.toString()),
-                payload: payload,
+                app: namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
+                nonce: (await fetchNonce(account.toString())).toString(),
+                data: payload,
+                max_gas_price: "10",
             }
             typedData.message = message
 
             const signature = await walletClient.signTypedData(typedData);
-            const signedMessage = JSON.stringify({
+            const signedMessage = {
                 signature,
                 typedData: btoa(JSON.stringify(typedData)),
-            })
+            }
             // console.log(signedMessage)
 
             setEspressoInputID(keccak256(signature))
             
-            await submitToEspresso(namespace, signedMessage)
+            await submitToPaio(signedMessage)
+            // await submitToEspresso(namespace, signedMessage)
         }
     };
 
@@ -312,9 +314,9 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     
     const [input, setInput] = useState<string>("");
     const [hexInput, setHexInput] = useState<boolean>(false);
-    const [hexEspressoInput, setHexEspressoInput] = useState<boolean>(false);
-    const [espressoNamespace, setEspressoNamespace] = useState<number>(0);
-    const [espressoPayload, setEspressoPayload] = useState<string>("");
+    const [cartesiTxId, setCartesiTxId] = useState<boolean>(false);
+    const [dappAddress, setDappAddress] = useState<string>("");
+    const [paioData, setPaioData] = useState<string>("");
     const [erc20Amount, setErc20Amount] = useState<number>(0);
     const [erc20Token, setErc20Token] = useState<string>("");
     const [erc721Id, setErc721Id] = useState<number>(0);
@@ -352,19 +354,19 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <br /><br />
             </div>
             <div>
-                Send Espresso Input <br />
-                Espresso Namespace: <input
-                    type="number"
-                    value={espressoNamespace}
-                    onChange={(e) => setEspressoNamespace(Number(e.target.value))}
+                Send Paio Input <br />
+                App: <input
+                    type="text"
+                    value={dappAddress}
+                    onChange={(e) => setDappAddress(e.target.value)}
                 />
                 Payload: <input
                     type="text"
-                    value={espressoPayload}
-                    onChange={(e) => setEspressoPayload(e.target.value)}
+                    value={paioData}
+                    onChange={(e) => setPaioData(e.target.value)}
                 />
-                <input type="checkbox" checked={hexEspressoInput} onChange={(e) => setHexEspressoInput(!hexEspressoInput)}/><span>Raw Hex </span>
-                <button onClick={() => addEspressoInput(espressoNamespace, espressoPayload)} disabled={!rollups}>
+                <input type="checkbox" checked={cartesiTxId} onChange={(e) => setCartesiTxId(!cartesiTxId)}/><span>Raw Hex </span>
+                <button onClick={() => addPaioInput(dappAddress, paioData)} disabled={!rollups}>
                     Send
                 </button>
                 <br />
