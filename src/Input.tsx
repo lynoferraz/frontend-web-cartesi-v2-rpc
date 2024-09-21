@@ -128,7 +128,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             const [account] = await walletClient.getAddresses()
             typedData.account = account
 
-            if (cartesiTxId) {
+            if (hexCartesiInput) {
                 payload = '0x' + payload
             }
 
@@ -147,7 +147,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             }
             // console.log(signedMessage)
 
-            setEspressoInputID(keccak256(signature))
+            setCartesiTxId(keccak256(signature))
             
             await submitToPaio(signedMessage)
             // await submitToEspresso(namespace, signedMessage)
@@ -314,7 +314,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     
     const [input, setInput] = useState<string>("");
     const [hexInput, setHexInput] = useState<boolean>(false);
-    const [cartesiTxId, setCartesiTxId] = useState<boolean>(false);
+    const [hexCartesiInput, setHexCartesiInput] = useState<boolean>(false);
     const [dappAddress, setDappAddress] = useState<string>("");
     const [paioData, setPaioData] = useState<string>("");
     const [erc20Amount, setErc20Amount] = useState<number>(0);
@@ -329,7 +329,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     const [erc1155Amounts, setErc1155Amounts] = useState<number[]>([]);
     const [erc1155IdsStr, setErc1155IdsStr] = useState<string>("[]");
     const [erc1155AmountsStr, setErc1155AmountsStr] = useState<string>("[]");
-    const [espressoInputID, setEspressoInputID] = useState<string>("");
+    const [cartesiTxId, setCartesiTxId] = useState<string>("");
 
     return (
         <div>
@@ -365,12 +365,12 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     value={paioData}
                     onChange={(e) => setPaioData(e.target.value)}
                 />
-                <input type="checkbox" checked={cartesiTxId} onChange={(e) => setCartesiTxId(!cartesiTxId)}/><span>Raw Hex </span>
+                <input type="checkbox" checked={hexCartesiInput} onChange={(e) => setHexCartesiInput(!hexCartesiInput)}/><span>Raw Hex </span>
                 <button onClick={() => addPaioInput(dappAddress, paioData)} disabled={!rollups}>
                     Send
                 </button>
                 <br />
-                {espressoInputID && <div>Input ID: {espressoInputID}</div>}
+                {cartesiTxId && <div>Input ID: {cartesiTxId}</div>}
                 <br />
             </div>
             <div>
