@@ -59,15 +59,16 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
     const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
     const nonodoPaioUrl = "http://localhost:8080/transactions"
+    const paioDevUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
 
     let typedData = {
         account: "0x" as any,
         domain: {
-            name: "AvailM",
-            version: "1",
-            chainId: 31337, // use hook
+            name: "CartesiPaio",
+            version: "0.0.1",
+            chainId: 31337, // Paio's fixed value for Anvil and Hardhat
             verifyingContract:
-                "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+                "0x0000000000000000000000000000000000000000",
         } as const,
         types: {
             EIP712Domain: [
@@ -109,6 +110,35 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         return nextNonce
     }
 
+    const createSigObj = (signature: string) => {
+        const without0x = signature.replace(/^0x/, '')
+        return {
+            r: `0x${without0x.substring(0, 64)}`,
+            s: `0x${without0x.substring(64, 128)}`,
+            yParity: `0x${without0x.substring(128, 130)}`
+        }
+    }
+
+    const submitToPaioDev = async (signature: string, message: any) => {
+        const sigObj = createSigObj(signature)
+        const body = JSON.stringify({
+            signature: sigObj,
+            message: {
+                ...message,
+                nonce: +message.nonce,
+                max_gas_price: +message.max_gas_price,
+            }
+        })
+        console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST https://cartesi-paio-avail-turing.fly.dev/transaction`)
+        const response = await fetch(paioDevUrl, {
+            method: 'POST',
+            body,
+            headers: {'Content-Type': 'application/json'}
+        });
+        console.log(await response.text())
+        if (!response.ok) { console.log("submit to Paio failed") }
+    }
+
     const submitToPaio = async (submitToAvail: any) => {
         const response = await fetch(nonodoPaioUrl, {
             method: 'POST',
@@ -134,7 +164,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
             const message = {
                 app: namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
-                nonce: (await fetchNonce(account.toString())).toString(),
+                nonce: 1, //(await fetchNonce(account.toString())).toString(),
                 data: payload,
                 max_gas_price: "10",
             }
@@ -149,7 +179,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
             setCartesiTxId(keccak256(signature))
             
-            await submitToPaio(signedMessage)
+            // await submitToPaio(signedMessage)
+            await submitToPaioDev(signature, message)
             // await submitToEspresso(namespace, signedMessage)
         }
     };
