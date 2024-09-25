@@ -18,7 +18,7 @@ import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
 import configFile from "./config.json";
 
-import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked } from "viem";
+import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked, decodeAbiParameters } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputPropos {
@@ -59,14 +59,15 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
     const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
     const nonodoPaioUrl = "http://localhost:8080/transactions"
-    const paioDevUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
+    const paioDevSendTransactionUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
+    const paioDevNonceUrl = "https://cartesi-paio-avail-turing.fly.dev/nonce"
 
     let typedData = {
         account: "0x" as any,
         domain: {
             name: "CartesiPaio",
             version: "0.0.1",
-            chainId: 31337, // Paio's fixed value for Anvil and Hardhat
+            chainId: 11155111, // Paio's fixed value for Anvil and Hardhat
             verifyingContract:
                 "0x0000000000000000000000000000000000000000",
         } as const,
@@ -74,18 +75,32 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             EIP712Domain: [
                 { name: "name", type: "string" },
                 { name: "version", type: "string" },
-                { name: "chainId", type: "uint32" },
+                { name: "chainId", type: "uint256" },
                 { name: "verifyingContract", type: "address" },
             ],
             CartesiMessage: [
                 { name: "app", type: "address" },
-                { name: "nonce", type: "uint32" },
+                { name: "nonce", type: "uint64" },
                 { name: "max_gas_price", type: "uint128" },
                 { name: "data", type: "bytes" },
             ],
         } as const,
         primaryType: "CartesiMessage" as const,
         message: { nonce: BigInt(0), data: "0x" },
+    }
+
+    const fetchPaioNonce = async (user: any, application: any) => {
+        const response = await fetch(paioDevNonceUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user, application })
+        });
+
+        const responseData = await response.json();
+        const nextNonce = responseData.nonce;
+        return BigInt(nextNonce)
     }
 
     const fetchNonce = async (sender: string) => {
@@ -125,7 +140,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             message,
         })
         console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST https://cartesi-paio-avail-turing.fly.dev/transaction`)
-        const response = await fetch(paioDevUrl, {
+        const response = await fetch(paioDevSendTransactionUrl, {
             method: 'POST',
             body,
             headers: { 'Content-Type': 'application/json' }
@@ -156,10 +171,13 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             if (hexCartesiInput) {
                 payload = '0x' + payload
             }
+            const app = namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e"
+            const user = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+            const nonce = await fetchPaioNonce(user, app)
 
             const message = {
-                app: namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
-                nonce: BigInt(1), //(await fetchNonce(account.toString())).toString(),
+                app,
+                nonce: BigInt(nonce), //(await fetchNonce(account.toString())).toString(),
                 data: payload,
                 max_gas_price: BigInt(10),
             }
@@ -193,14 +211,18 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
             ];
             // await submitToPaio(signedMessage)
-            const abiEncoder = encodePacked as any
-            // const abiEncoder = encodeAbiParameters as any
-            const hexData = abiEncoder(signingMessageAbi.map(v => v.type), [
+            // const abiEncoder = encodePacked as any
+            const abiEncoder = encodeAbiParameters as any
+            const hexData = abiEncoder(signingMessageAbi, [
                 message.app,
                 message.nonce,
                 message.max_gas_price,
                 message.data
             ]);
+            const abiDecoder = decodeAbiParameters as any
+            const decoded = abiDecoder(signingMessageAbi, hexData)
+            console.log(...decoded)
+            console.log({hexData})
             await submitToPaioDev(signature, hexData)
             // await submitToEspresso(namespace, signedMessage)
         }
