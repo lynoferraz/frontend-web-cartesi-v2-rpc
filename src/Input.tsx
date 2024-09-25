@@ -18,7 +18,7 @@ import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
 import configFile from "./config.json";
 
-import { createWalletClient, custom, keccak256 } from "viem";
+import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputPropos {
@@ -81,11 +81,11 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 { name: "app", type: "address" },
                 { name: "nonce", type: "uint32" },
                 { name: "max_gas_price", type: "uint128" },
-                { name: "data", type: "string" },
+                { name: "data", type: "bytes" },
             ],
         } as const,
         primaryType: "CartesiMessage" as const,
-        message: { nonce: 0, data: "" },
+        message: { nonce: BigInt(0), data: "0x" },
     }
 
     const fetchNonce = async (sender: string) => {
@@ -120,14 +120,9 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     }
 
     const submitToPaioDev = async (signature: string, message: any) => {
-        const sigObj = createSigObj(signature)
         const body = JSON.stringify({
-            signature: sigObj,
-            message: {
-                ...message,
-                nonce: +message.nonce,
-                max_gas_price: +message.max_gas_price,
-            }
+            signature,
+            message,
         })
         console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST https://cartesi-paio-avail-turing.fly.dev/transaction`)
         const response = await fetch(paioDevUrl, {
@@ -164,23 +159,49 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
             const message = {
                 app: namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
-                nonce: 1, //(await fetchNonce(account.toString())).toString(),
+                nonce: BigInt(1), //(await fetchNonce(account.toString())).toString(),
                 data: payload,
-                max_gas_price: "10",
+                max_gas_price: BigInt(10),
             }
             typedData.message = message
 
             const signature = await walletClient.signTypedData(typedData);
-            const signedMessage = {
-                signature,
-                typedData: btoa(JSON.stringify(typedData)),
-            }
+            // const signedMessage = {
+            //     signature,
+            //     typedData: btoa(JSON.stringify(typedData)),
+            // }
             // console.log(signedMessage)
 
             setCartesiTxId(keccak256(signature))
 
+            const signingMessageAbi = [
+                {
+                    type: 'address',
+                    name: 'app'
+                },
+                {
+                    type: 'uint64',
+                    name: 'nonce'
+                },
+                {
+                    type: 'uint128',
+                    name: 'max_gas_price'
+                },
+                {
+                    type: 'bytes',
+                    name: 'data'
+                }
+            ];
             // await submitToPaio(signedMessage)
-            await submitToPaioDev(signature, message)
+            const abiEncoder = encodePacked as any
+            // const abiEncoder = encodeAbiParameters as any
+            const hexData = abiEncoder(signingMessageAbi.map(v => v.type), [
+                message.app,
+                message.nonce,
+                message.max_gas_price,
+                message.data
+            ]);
+            await submitToPaioDev(signature, hexData)
             // await submitToEspresso(namespace, signedMessage)
         }
     };
