@@ -10,9 +10,9 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-import { FC } from "react";
+import { FC, useEffect } from "react";
 import injectedModule from "@web3-onboard/injected-wallets";
-import { init } from "@web3-onboard/react";
+import { init, useSetChain } from "@web3-onboard/react";
 import { useState } from "react";
 
 import { GraphQLProvider } from "./GraphQL";
@@ -41,8 +41,16 @@ init({
 });
 
 const App: FC = () => {
+    const [{ connectedChain }] = useSetChain();
     const [dappAddress, setDappAddress] = useState<string>("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
-
+    useEffect(() => {
+        console.log({ connectedChain })
+        if (connectedChain?.id === "0x7a69") {
+            setDappAddress('0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e')
+        } else {
+            setDappAddress('')
+        }
+    }, [connectedChain])
     return (
         <div>
             <Network />

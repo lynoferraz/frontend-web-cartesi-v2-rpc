@@ -16,9 +16,8 @@ import { useRollups } from "./useRollups";
 import { useWallets } from "@web3-onboard/react";
 import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
-import configFile from "./config.json";
 
-import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked, decodeAbiParameters, fromHex } from "viem";
+import { createWalletClient, custom, encodeAbiParameters, decodeAbiParameters } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputPropos {
@@ -57,8 +56,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         }
     };
 
-    const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
-    const nonodoPaioUrl = "http://localhost:8080/transactions"
+    // const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
+    // const nonodoPaioUrl = "http://localhost:8080/transactions"
     // const paioDevSendTransactionUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
     // const paioDevNonceUrl = "https://cartesi-paio-avail-turing.fly.dev/nonce"
     const paioDevNonceUrl = "http://localhost:8080/nonce"
@@ -69,7 +68,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         domain: {
             name: "CartesiDomain",
             version: "0.0.1",
-            chainId: 11155111, // Paio's fixed value for Anvil and Hardhat
+            chainId: parseInt(connectedChain?.id.substring(2) ?? "0", 16),
             verifyingContract:
                 "0x0000000000000000000000000000000000000000",
         } as const,
@@ -91,8 +90,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         message: { nonce: BigInt(0), data: "0x" },
     }
 
-    const fetchPaioNonce = async (user: any, application: any) => {
-        console.log({user, application})
+    const fetchNonceL2 = async (user: any, application: any) => {
+        console.log({ user, application })
         const response = await fetch(paioDevNonceUrl, {
             method: 'POST',
             headers: {
@@ -106,38 +105,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         return BigInt(nextNonce)
     }
 
-    const fetchNonce = async (sender: string) => {
-        const config: any = configFile;
-        const url = `${config[connectedChain!.id].graphqlAPIURL}/graphql`;
-
-        const query = `
-            {inputs(where: {msgSender: "${sender}" type: "Espresso"}) {
-                totalCount
-        }}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query })
-        });
-
-        const responseData = await response.json();
-        const nextNonce = responseData.data.inputs.totalCount + 1;
-        return nextNonce
-    }
-
-    const createSigObj = (signature: string) => {
-        const without0x = signature.replace(/^0x/, '')
-        return {
-            r: `0x${without0x.substring(0, 64)}`,
-            s: `0x${without0x.substring(64, 128)}`,
-            yParity: `0x${parseInt(without0x.substring(128, 130), 16) - 27}`
-        }
-    }
-
-    const submitToPaioDev = async (signature: string, message: any) => {
+    const submitTransactionL2 = async (signature: string, message: any) => {
         const body = JSON.stringify({
             signature,
             message,
@@ -148,8 +116,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             body,
             headers: { 'Content-Type': 'application/json' }
         });
-        // console.log(await response.text())
-        if (!response.ok) { 
+        if (!response.ok) {
             console.log("submit to Paio failed")
             throw new Error("submit to Paio failed: " + response.text())
         } else {
@@ -157,17 +124,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         }
     }
 
-    const submitToPaio = async (submitToAvail: any) => {
-        const response = await fetch(nonodoPaioUrl, {
-            method: 'POST',
-            body: JSON.stringify(submitToAvail),
-            headers: { 'Content-Type': 'application/json' }
-        });
-        console.log(await response.text())
-        if (!response.ok) { console.log("submit to Paio failed") }
-    }
-
-    const addPaioInput = async (namespace: string, payload: string) => {
+    const addTransactionL2 = async (namespace: string, payload: string) => {
         if (rollups && provider) {
             const walletClient: any = createWalletClient({
                 chain: sepolia,
@@ -179,13 +136,14 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             if (hexCartesiInput) {
                 payload = '0x' + payload
             }
-            const app = namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e"
-            const user = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-            const nonce = await fetchPaioNonce(user, app)
-            console.log({nonce})
+            const app = namespace || propos.dappAddress
+            const signer = provider.getSigner();
+            const signerAddress = await signer.getAddress()
+            const nonce = await fetchNonceL2(signerAddress, app)
+            console.log({ nonce })
             const message = {
                 app,
-                nonce: BigInt(nonce), //(await fetchNonce(account.toString())).toString(),
+                nonce: BigInt(nonce),
                 data: payload,
                 max_gas_price: BigInt(10),
             }
@@ -219,8 +177,6 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     name: 'data'
                 }
             ];
-            // await submitToPaio(signedMessage)
-            // const abiEncoder = encodePacked as any
             const abiEncoder = encodeAbiParameters as any
             const hexData = abiEncoder(signingMessageAbi, [
                 message.app,
@@ -231,10 +187,9 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             const abiDecoder = decodeAbiParameters as any
             const decoded = abiDecoder(signingMessageAbi, hexData)
             console.log(...decoded)
-            console.log({hexData})
-            const res = await submitToPaioDev(signature, hexData)
+            console.log({ hexData })
+            const res = await submitTransactionL2(signature, hexData)
             setCartesiTxId(res.id)
-            // await submitToEspresso(namespace, signedMessage)
         }
     };
 
@@ -425,20 +380,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <br /><br />
             </div>
             <div>
-                Send L1 Input <br />
-                Input: <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                />
-                <input type="checkbox" checked={hexInput} onChange={(e) => setHexInput(!hexInput)} /><span>Raw Hex </span>
-                <button onClick={() => addInput(input)} disabled={!rollups}>
-                    Send
-                </button>
-                <br /><br />
-            </div>
-            <div>
                 Send L2 EIP-712 Input <br />
+                Connected chainId: {parseInt(connectedChain?.id.substring(2) ?? "0", 16)}<br />
                 App: <input
                     type="text"
                     value={dappAddress}
@@ -450,12 +393,25 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     onChange={(e) => setPaioData(e.target.value)}
                 />
                 <input type="checkbox" checked={hexCartesiInput} onChange={(e) => setHexCartesiInput(!hexCartesiInput)} /><span>Raw Hex </span>
-                <button onClick={() => addPaioInput(dappAddress, paioData)} disabled={!rollups}>
+                <button onClick={() => addTransactionL2(dappAddress, paioData)} disabled={!rollups}>
                     Send
                 </button>
                 <br />
                 {cartesiTxId && <div>Input ID: {cartesiTxId}</div>}
                 <br />
+            </div>
+            <div>
+                Send L1 Input <br />
+                Input: <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                />
+                <input type="checkbox" checked={hexInput} onChange={(e) => setHexInput(!hexInput)} /><span>Raw Hex </span>
+                <button onClick={() => addInput(input)} disabled={!rollups}>
+                    Send
+                </button>
+                <br /><br />
             </div>
             <div>
                 Deposit Ether <br />
