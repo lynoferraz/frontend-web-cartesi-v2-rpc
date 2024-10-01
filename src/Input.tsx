@@ -66,8 +66,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     let typedData = {
         account: "0x" as any,
         domain: {
-            name: "CartesiDomain",
-            version: "0.0.1",
+            name: "Cartesi",
+            version: "0.1.0",
             chainId: parseInt(connectedChain?.id.substring(2) ?? "0", 16),
             verifyingContract:
                 "0x0000000000000000000000000000000000000000",
