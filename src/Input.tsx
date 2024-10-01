@@ -59,8 +59,10 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
     const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
     const nonodoPaioUrl = "http://localhost:8080/transactions"
-    const paioDevSendTransactionUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
-    const paioDevNonceUrl = "https://cartesi-paio-avail-turing.fly.dev/nonce"
+    // const paioDevSendTransactionUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
+    // const paioDevNonceUrl = "https://cartesi-paio-avail-turing.fly.dev/nonce"
+    const paioDevNonceUrl = "http://localhost:8080/nonce"
+    const paioDevSendTransactionUrl = "http://localhost:8080/transaction"
 
     let typedData = {
         account: "0x" as any,
@@ -90,12 +92,13 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     }
 
     const fetchPaioNonce = async (user: any, application: any) => {
+        console.log({user, application})
         const response = await fetch(paioDevNonceUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user, application })
+            body: JSON.stringify({ msg_sender: user, app_contract: application })
         });
 
         const responseData = await response.json();
@@ -139,7 +142,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             signature,
             message,
         })
-        console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST https://cartesi-paio-avail-turing.fly.dev/transaction`)
+        console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST ${paioDevSendTransactionUrl}`)
         const response = await fetch(paioDevSendTransactionUrl, {
             method: 'POST',
             body,
@@ -174,7 +177,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             const app = namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e"
             const user = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
             const nonce = await fetchPaioNonce(user, app)
-
+            console.log({nonce})
             const message = {
                 app,
                 nonce: BigInt(nonce), //(await fetchNonce(account.toString())).toString(),
