@@ -18,11 +18,11 @@ import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
 import configFile from "./config.json";
 
-import { createWalletClient, custom, keccak256 } from "viem";
+import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked, decodeAbiParameters, fromHex } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputPropos {
-    dappAddress: string 
+    dappAddress: string
 }
 
 export const Input: React.FC<IInputPropos> = (propos) => {
@@ -48,7 +48,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             try {
                 let payload = ethers.utils.toUtf8Bytes(str);
                 if (hexInput) {
-                    payload = ethers.utils.arrayify('0x'+str);
+                    payload = ethers.utils.arrayify('0x' + str);
                 }
                 await rollups.inputContract.addInput(propos.dappAddress, payload);
             } catch (e) {
@@ -59,38 +59,57 @@ export const Input: React.FC<IInputPropos> = (propos) => {
 
     const espressoUrl = "https://query.cappuccino.testnet.espresso.network/v0/submit/submit"
     const nonodoPaioUrl = "http://localhost:8080/transactions"
+    // const paioDevSendTransactionUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
+    // const paioDevNonceUrl = "https://cartesi-paio-avail-turing.fly.dev/nonce"
+    const paioDevNonceUrl = "http://localhost:8080/nonce"
+    const paioDevSendTransactionUrl = "http://localhost:8080/transaction"
 
     let typedData = {
         account: "0x" as any,
         domain: {
-            name: "AvailM",
-            version: "1",
-            chainId: 31337, // use hook
+            name: "CartesiDomain",
+            version: "0.0.1",
+            chainId: 11155111, // Paio's fixed value for Anvil and Hardhat
             verifyingContract:
-                "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+                "0x0000000000000000000000000000000000000000",
         } as const,
         types: {
             EIP712Domain: [
                 { name: "name", type: "string" },
                 { name: "version", type: "string" },
-                { name: "chainId", type: "uint32" },
+                { name: "chainId", type: "uint256" },
                 { name: "verifyingContract", type: "address" },
             ],
             CartesiMessage: [
                 { name: "app", type: "address" },
-                { name: "nonce", type: "uint32" },
+                { name: "nonce", type: "uint64" },
                 { name: "max_gas_price", type: "uint128" },
-                { name: "data", type: "string" },
+                { name: "data", type: "bytes" },
             ],
         } as const,
         primaryType: "CartesiMessage" as const,
-        message: {nonce: 0, data: ""},
+        message: { nonce: BigInt(0), data: "0x" },
+    }
+
+    const fetchPaioNonce = async (user: any, application: any) => {
+        console.log({user, application})
+        const response = await fetch(paioDevNonceUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ msg_sender: user, app_contract: application })
+        });
+
+        const responseData = await response.json();
+        const nextNonce = responseData.nonce;
+        return BigInt(nextNonce)
     }
 
     const fetchNonce = async (sender: string) => {
         const config: any = configFile;
         const url = `${config[connectedChain!.id].graphqlAPIURL}/graphql`;
-        
+
         const query = `
             {inputs(where: {msgSender: "${sender}" type: "Espresso"}) {
                 totalCount
@@ -99,7 +118,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-            'Content-Type': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ query })
         });
@@ -109,11 +128,40 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         return nextNonce
     }
 
+    const createSigObj = (signature: string) => {
+        const without0x = signature.replace(/^0x/, '')
+        return {
+            r: `0x${without0x.substring(0, 64)}`,
+            s: `0x${without0x.substring(64, 128)}`,
+            yParity: `0x${parseInt(without0x.substring(128, 130), 16) - 27}`
+        }
+    }
+
+    const submitToPaioDev = async (signature: string, message: any) => {
+        const body = JSON.stringify({
+            signature,
+            message,
+        })
+        console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST ${paioDevSendTransactionUrl}`)
+        const response = await fetch(paioDevSendTransactionUrl, {
+            method: 'POST',
+            body,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        // console.log(await response.text())
+        if (!response.ok) { 
+            console.log("submit to Paio failed")
+            throw new Error("submit to Paio failed: " + response.text())
+        } else {
+            return response.json()
+        }
+    }
+
     const submitToPaio = async (submitToAvail: any) => {
         const response = await fetch(nonodoPaioUrl, {
             method: 'POST',
             body: JSON.stringify(submitToAvail),
-            headers: {'Content-Type': 'application/json'}
+            headers: { 'Content-Type': 'application/json' }
         });
         console.log(await response.text())
         if (!response.ok) { console.log("submit to Paio failed") }
@@ -131,30 +179,66 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             if (hexCartesiInput) {
                 payload = '0x' + payload
             }
-
+            const app = namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e"
+            const user = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+            const nonce = await fetchPaioNonce(user, app)
+            console.log({nonce})
             const message = {
-                app: namespace || "0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e",
-                nonce: (await fetchNonce(account.toString())).toString(),
+                app,
+                nonce: BigInt(nonce), //(await fetchNonce(account.toString())).toString(),
                 data: payload,
-                max_gas_price: "10",
+                max_gas_price: BigInt(10),
             }
             typedData.message = message
 
             const signature = await walletClient.signTypedData(typedData);
-            const signedMessage = {
-                signature,
-                typedData: btoa(JSON.stringify(typedData)),
-            }
+            // const signedMessage = {
+            //     signature,
+            //     typedData: btoa(JSON.stringify(typedData)),
+            // }
             // console.log(signedMessage)
+            // Milton request us to use the id from backend
+            // const sig = fromHex(signature, "bytes")
+            // setCartesiTxId(keccak256(sig))
 
-            setCartesiTxId(keccak256(signature))
-            
-            await submitToPaio(signedMessage)
+            const signingMessageAbi = [
+                {
+                    type: 'address',
+                    name: 'app'
+                },
+                {
+                    type: 'uint64',
+                    name: 'nonce'
+                },
+                {
+                    type: 'uint128',
+                    name: 'max_gas_price'
+                },
+                {
+                    type: 'bytes',
+                    name: 'data'
+                }
+            ];
+            // await submitToPaio(signedMessage)
+            // const abiEncoder = encodePacked as any
+            const abiEncoder = encodeAbiParameters as any
+            const hexData = abiEncoder(signingMessageAbi, [
+                message.app,
+                message.nonce,
+                message.max_gas_price,
+                message.data
+            ]);
+            const abiDecoder = decodeAbiParameters as any
+            const decoded = abiDecoder(signingMessageAbi, hexData)
+            console.log(...decoded)
+            console.log({hexData})
+            const res = await submitToPaioDev(signature, hexData)
+            setCartesiTxId(res.id)
             // await submitToEspresso(namespace, signedMessage)
         }
     };
 
-    const depositErc20ToPortal = async (token: string,amount: number) => {
+    const depositErc20ToPortal = async (token: string, amount: number) => {
         try {
             if (rollups && provider) {
                 const data = ethers.utils.toUtf8Bytes(`Deposited (${amount}) of ERC20 (${token}).`);
@@ -177,7 +261,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     }
                 }
 
-                await rollups.erc20PortalContract.depositERC20Tokens(token,propos.dappAddress,ethers.utils.parseEther(`${amount}`),data);
+                await rollups.erc20PortalContract.depositERC20Tokens(token, propos.dappAddress, ethers.utils.parseEther(`${amount}`), data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -188,17 +272,17 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         try {
             if (rollups && provider) {
                 const data = ethers.utils.toUtf8Bytes(`Deposited (${amount}) ether.`);
-                const txOverrides = {value: ethers.utils.parseEther(`${amount}`)}
+                const txOverrides = { value: ethers.utils.parseEther(`${amount}`) }
 
                 // const tx = await ...
-                rollups.etherPortalContract.depositEther(propos.dappAddress,data,txOverrides);
+                rollups.etherPortalContract.depositEther(propos.dappAddress, data, txOverrides);
             }
         } catch (e) {
             console.log(`${e}`);
         }
     };
 
-    const transferNftToPortal = async (contractAddress: string,nftid: number) => {
+    const transferNftToPortal = async (contractAddress: string, nftid: number) => {
         try {
             if (rollups && provider) {
                 const data = ethers.utils.toUtf8Bytes(`Deposited (${nftid}) of ERC721 (${contractAddress}).`);
@@ -223,7 +307,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
 
                 // Transfer
-                rollups.erc721PortalContract.depositERC721Token(contractAddress,propos.dappAddress, nftid, "0x", data);
+                rollups.erc721PortalContract.depositERC721Token(contractAddress, propos.dappAddress, nftid, "0x", data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -243,10 +327,10 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 const tokenContract = signer ? IERC1155__factory.connect(contractAddress, signer) : IERC1155__factory.connect(contractAddress, provider);
 
                 // query current approval
-                const currentApproval = await tokenContract.isApprovedForAll(signerAddress,erc1155SinglePortalAddress);
+                const currentApproval = await tokenContract.isApprovedForAll(signerAddress, erc1155SinglePortalAddress);
                 if (!currentApproval) {
                     // Allow portal to withdraw `amount` tokens from signer
-                    const tx = await tokenContract.setApprovalForAll(erc1155SinglePortalAddress,true);
+                    const tx = await tokenContract.setApprovalForAll(erc1155SinglePortalAddress, true);
                     const receipt = await tx.wait(1);
                     const event = (await tokenContract.queryFilter(tokenContract.filters.ApprovalForAll(), receipt.blockHash)).pop();
                     if (!event) {
@@ -255,7 +339,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
 
                 // Transfer
-                rollups.erc1155SinglePortalContract.depositSingleERC1155Token(contractAddress,propos.dappAddress, id, amount, "0x", data);
+                rollups.erc1155SinglePortalContract.depositSingleERC1155Token(contractAddress, propos.dappAddress, id, amount, "0x", data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -275,10 +359,10 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 const tokenContract = signer ? IERC1155__factory.connect(contractAddress, signer) : IERC1155__factory.connect(contractAddress, provider);
 
                 // query current approval
-                const currentApproval = await tokenContract.isApprovedForAll(signerAddress,erc1155BatchPortalAddress);
+                const currentApproval = await tokenContract.isApprovedForAll(signerAddress, erc1155BatchPortalAddress);
                 if (!currentApproval) {
                     // Allow portal to withdraw `amount` tokens from signer
-                    const tx = await tokenContract.setApprovalForAll(erc1155BatchPortalAddress,true);
+                    const tx = await tokenContract.setApprovalForAll(erc1155BatchPortalAddress, true);
                     const receipt = await tx.wait(1);
                     const event = (await tokenContract.queryFilter(tokenContract.filters.ApprovalForAll(), receipt.blockHash)).pop();
                     if (!event) {
@@ -287,7 +371,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
 
                 // Transfer
-                rollups.erc1155BatchPortalContract.depositBatchERC1155Token(contractAddress,propos.dappAddress, ids, amounts, "0x", data);
+                rollups.erc1155BatchPortalContract.depositBatchERC1155Token(contractAddress, propos.dappAddress, ids, amounts, "0x", data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -301,8 +385,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         const newAmounts = erc1155Amounts;
         newAmounts.push(erc1155Amount);
         setErc1155Amounts(newAmounts);
-        setErc1155IdsStr("["+erc1155Ids.join(',')+"]");
-        setErc1155AmountsStr("["+erc1155Amounts.join(',')+"]");
+        setErc1155IdsStr("[" + erc1155Ids.join(',') + "]");
+        setErc1155AmountsStr("[" + erc1155Amounts.join(',') + "]");
     };
 
     const Clear1155Batch = () => {
@@ -311,7 +395,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         setErc1155Ids([]);
         setErc1155Amounts([]);
     };
-    
+
     const [input, setInput] = useState<string>("");
     const [hexInput, setHexInput] = useState<boolean>(false);
     const [hexCartesiInput, setHexCartesiInput] = useState<boolean>(false);
@@ -341,20 +425,20 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <br /><br />
             </div>
             <div>
-                Send Input <br />
+                Send L1 Input <br />
                 Input: <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                 />
-                <input type="checkbox" checked={hexInput} onChange={(e) => setHexInput(!hexInput)}/><span>Raw Hex </span>
+                <input type="checkbox" checked={hexInput} onChange={(e) => setHexInput(!hexInput)} /><span>Raw Hex </span>
                 <button onClick={() => addInput(input)} disabled={!rollups}>
                     Send
                 </button>
                 <br /><br />
             </div>
             <div>
-                Send Paio Input <br />
+                Send L2 EIP-712 Input <br />
                 App: <input
                     type="text"
                     value={dappAddress}
@@ -365,7 +449,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     value={paioData}
                     onChange={(e) => setPaioData(e.target.value)}
                 />
-                <input type="checkbox" checked={hexCartesiInput} onChange={(e) => setHexCartesiInput(!hexCartesiInput)}/><span>Raw Hex </span>
+                <input type="checkbox" checked={hexCartesiInput} onChange={(e) => setHexCartesiInput(!hexCartesiInput)} /><span>Raw Hex </span>
                 <button onClick={() => addPaioInput(dappAddress, paioData)} disabled={!rollups}>
                     Send
                 </button>
@@ -397,7 +481,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     value={erc20Amount}
                     onChange={(e) => setErc20Amount(Number(e.target.value))}
                 />
-                <button onClick={() => depositErc20ToPortal(erc20Token,erc20Amount)} disabled={!rollups}>
+                <button onClick={() => depositErc20ToPortal(erc20Token, erc20Amount)} disabled={!rollups}>
                     Deposit ERC20
                 </button>
                 <br /><br />
@@ -414,7 +498,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     value={erc721Id}
                     onChange={(e) => setErc721Id(Number(e.target.value))}
                 />
-                <button onClick={() => transferNftToPortal(erc721,erc721Id)} disabled={!rollups}>
+                <button onClick={() => transferNftToPortal(erc721, erc721Id)} disabled={!rollups}>
                     Transfer NFT
                 </button>
                 <br /><br />
@@ -439,7 +523,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <button onClick={() => AddTo1155Batch()} disabled={!rollups}>
                     Add to Batch
                 </button>
-                <button onClick={() => transferErc1155SingleToPortal(erc1155,erc1155Id,erc1155Amount)} disabled={!rollups}>
+                <button onClick={() => transferErc1155SingleToPortal(erc1155, erc1155Id, erc1155Amount)} disabled={!rollups}>
                     Transfer Single 1155
                 </button>
                 <br />
@@ -448,7 +532,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <button onClick={() => Clear1155Batch()} disabled={!rollups}>
                     Clear Batch
                 </button>
-                <button onClick={() => transferErc1155BatchToPortal(erc1155,erc1155Ids,erc1155Amounts)} disabled={!rollups}>
+                <button onClick={() => transferErc1155BatchToPortal(erc1155, erc1155Ids, erc1155Amounts)} disabled={!rollups}>
                     Transfer Batch 1155
                 </button>
             </div>
