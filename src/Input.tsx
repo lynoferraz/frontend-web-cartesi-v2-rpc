@@ -18,7 +18,7 @@ import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
 import configFile from "./config.json";
 
-import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked, decodeAbiParameters } from "viem";
+import { createWalletClient, custom, keccak256, encodeAbiParameters, encodePacked, decodeAbiParameters, fromHex } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputPropos {
@@ -148,8 +148,13 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             body,
             headers: { 'Content-Type': 'application/json' }
         });
-        console.log(await response.text())
-        if (!response.ok) { console.log("submit to Paio failed") }
+        // console.log(await response.text())
+        if (!response.ok) { 
+            console.log("submit to Paio failed")
+            throw new Error("submit to Paio failed: " + response.text())
+        } else {
+            return response.json()
+        }
     }
 
     const submitToPaio = async (submitToAvail: any) => {
@@ -192,8 +197,9 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             //     typedData: btoa(JSON.stringify(typedData)),
             // }
             // console.log(signedMessage)
-
-            setCartesiTxId(keccak256(signature))
+            // Milton request us to use the id from backend
+            // const sig = fromHex(signature, "bytes")
+            // setCartesiTxId(keccak256(sig))
 
             const signingMessageAbi = [
                 {
@@ -226,7 +232,8 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             const decoded = abiDecoder(signingMessageAbi, hexData)
             console.log(...decoded)
             console.log({hexData})
-            await submitToPaioDev(signature, hexData)
+            const res = await submitToPaioDev(signature, hexData)
+            setCartesiTxId(res.id)
             // await submitToEspresso(namespace, signedMessage)
         }
     };
