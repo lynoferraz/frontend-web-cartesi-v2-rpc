@@ -67,7 +67,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     let typedData = {
         account: "0x" as any,
         domain: {
-            name: "CartesiPaio",
+            name: "CartesiDomain",
             version: "0.0.1",
             chainId: 11155111, // Paio's fixed value for Anvil and Hardhat
             verifyingContract:
@@ -425,7 +425,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <br /><br />
             </div>
             <div>
-                Send Input <br />
+                Send L1 Input <br />
                 Input: <input
                     type="text"
                     value={input}
@@ -438,7 +438,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 <br /><br />
             </div>
             <div>
-                Send Paio Input <br />
+                Send L2 EIP-712 Input <br />
                 App: <input
                     type="text"
                     value={dappAddress}
