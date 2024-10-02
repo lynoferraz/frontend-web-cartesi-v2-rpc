@@ -17,7 +17,7 @@ import { useWallets } from "@web3-onboard/react";
 import { useSetChain } from "@web3-onboard/react";
 import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generated/rollups";
 
-import { createWalletClient, custom, encodeAbiParameters, decodeAbiParameters } from "viem";
+import { createWalletClient, custom } from "viem";
 import { sepolia } from "viem/chains";
 
 interface IInputProps {
@@ -64,7 +64,6 @@ export const Input: React.FC<IInputProps> = (props) => {
     const paioDevSendTransactionUrl = "http://localhost:8080/submit"
 
     let typedData = {
-        account: "0x" as any,
         domain: {
             name: "Cartesi",
             version: "0.1.0",
@@ -87,7 +86,12 @@ export const Input: React.FC<IInputProps> = (props) => {
             ],
         } as const,
         primaryType: "CartesiMessage" as const,
-        message: { app: "0x", nonce: "0", data: "0x", max_gas_price: "0" },
+        message: {
+            app: "0x",
+            nonce: 0,
+            data: "0x",
+            max_gas_price: 10
+        },
     }
 
     const fetchNonceL2 = async (user: any, application: any) => {
@@ -102,14 +106,11 @@ export const Input: React.FC<IInputProps> = (props) => {
 
         const responseData = await response.json();
         const nextNonce = responseData.nonce;
-        return BigInt(nextNonce)
+        return nextNonce
     }
 
-    const submitTransactionL2 = async (signature: string, typedData: any) => {
-        const body = JSON.stringify({
-            signature,
-            typedData,
-        })
+    const submitTransactionL2 = async (fullBody: any) => {
+        const body = JSON.stringify(fullBody)
         console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST ${paioDevSendTransactionUrl}`)
         const response = await fetch(paioDevSendTransactionUrl, {
             method: 'POST',
@@ -135,18 +136,21 @@ export const Input: React.FC<IInputProps> = (props) => {
             }
             const app = namespace || props.dappAddress
             const signer = provider.getSigner();
-            const signerAddress = await signer.getAddress()
-            typedData.account = signerAddress
-            const nonce = await fetchNonceL2(signerAddress, app)
+            const account = await signer.getAddress()
+            const nonce = await fetchNonceL2(account, app)
             console.log({ nonce })
             typedData.message = {
                 app,
-                nonce: BigInt(nonce).toString(),
+                nonce,
                 data: payload,
-                max_gas_price: BigInt(10).toString(),
+                max_gas_price: 10,
             }
-            const signature = await walletClient.signTypedData(typedData);
-            const res = await submitTransactionL2(signature, typedData)
+            const signature = await walletClient.signTypedData({ account, ...typedData });
+            const res = await submitTransactionL2({
+                typedData,
+                account,
+                signature,
+            })
             setCartesiTxId(res.id)
         }
     };
