@@ -20,12 +20,12 @@ import { IERC1155__factory, IERC20__factory, IERC721__factory } from "./generate
 import { createWalletClient, custom, encodeAbiParameters, decodeAbiParameters } from "viem";
 import { sepolia } from "viem/chains";
 
-interface IInputPropos {
+interface IInputProps {
     dappAddress: string
 }
 
-export const Input: React.FC<IInputPropos> = (propos) => {
-    const rollups = useRollups(propos.dappAddress);
+export const Input: React.FC<IInputProps> = (props) => {
+    const rollups = useRollups(props.dappAddress);
     const [connectedWallet] = useWallets();
     const [{ connectedChain }] = useSetChain();
     const provider = new ethers.providers.Web3Provider(
@@ -35,7 +35,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     const sendAddress = async (str: string) => {
         if (rollups) {
             try {
-                await rollups.relayContract.relayDAppAddress(propos.dappAddress);
+                await rollups.relayContract.relayDAppAddress(props.dappAddress);
             } catch (e) {
                 console.log(`${e}`);
             }
@@ -49,7 +49,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 if (hexInput) {
                     payload = ethers.utils.arrayify('0x' + str);
                 }
-                await rollups.inputContract.addInput(propos.dappAddress, payload);
+                await rollups.inputContract.addInput(props.dappAddress, payload);
             } catch (e) {
                 console.log(`${e}`);
             }
@@ -61,7 +61,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
     // const paioDevSendTransactionUrl = "https://cartesi-paio-avail-turing.fly.dev/transaction"
     // const paioDevNonceUrl = "https://cartesi-paio-avail-turing.fly.dev/nonce"
     const paioDevNonceUrl = "http://localhost:8080/nonce"
-    const paioDevSendTransactionUrl = "http://localhost:8080/transaction"
+    const paioDevSendTransactionUrl = "http://localhost:8080/submit"
 
     let typedData = {
         account: "0x" as any,
@@ -87,7 +87,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             ],
         } as const,
         primaryType: "CartesiMessage" as const,
-        message: { nonce: BigInt(0), data: "0x" },
+        message: { app: "0x", nonce: "0", data: "0x", max_gas_price: "0" },
     }
 
     const fetchNonceL2 = async (user: any, application: any) => {
@@ -105,10 +105,11 @@ export const Input: React.FC<IInputPropos> = (propos) => {
         return BigInt(nextNonce)
     }
 
-    const submitTransactionL2 = async (signature: string, message: any) => {
+    const submitTransactionL2 = async (signature: string, typedData: any, msg_sender: any) => {
         const body = JSON.stringify({
             signature,
-            message,
+            typedData,
+            msg_sender,
         })
         console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST ${paioDevSendTransactionUrl}`)
         const response = await fetch(paioDevSendTransactionUrl, {
@@ -132,63 +133,23 @@ export const Input: React.FC<IInputPropos> = (propos) => {
             })
             const [account] = await walletClient.getAddresses()
             typedData.account = account
-
             if (hexCartesiInput) {
                 payload = '0x' + payload
             }
-            const app = namespace || propos.dappAddress
+            const app = namespace || props.dappAddress
             const signer = provider.getSigner();
             const signerAddress = await signer.getAddress()
             const nonce = await fetchNonceL2(signerAddress, app)
             console.log({ nonce })
-            const message = {
+            typedData.message = {
                 app,
-                nonce: BigInt(nonce),
+                nonce: BigInt(nonce).toString(),
                 data: payload,
-                max_gas_price: BigInt(10),
+                max_gas_price: BigInt(10).toString(),
             }
-            typedData.message = message
 
             const signature = await walletClient.signTypedData(typedData);
-            // const signedMessage = {
-            //     signature,
-            //     typedData: btoa(JSON.stringify(typedData)),
-            // }
-            // console.log(signedMessage)
-            // Milton request us to use the id from backend
-            // const sig = fromHex(signature, "bytes")
-            // setCartesiTxId(keccak256(sig))
-
-            const signingMessageAbi = [
-                {
-                    type: 'address',
-                    name: 'app'
-                },
-                {
-                    type: 'uint64',
-                    name: 'nonce'
-                },
-                {
-                    type: 'uint128',
-                    name: 'max_gas_price'
-                },
-                {
-                    type: 'bytes',
-                    name: 'data'
-                }
-            ];
-            const abiEncoder = encodeAbiParameters as any
-            const hexData = abiEncoder(signingMessageAbi, [
-                message.app,
-                message.nonce,
-                message.max_gas_price,
-                message.data
-            ]);
-            const abiDecoder = decodeAbiParameters as any
-            const decoded = abiDecoder(signingMessageAbi, hexData)
-            console.log(...decoded)
-            console.log({ hexData })
-            const res = await submitTransactionL2(signature, hexData)
+            const res = await submitTransactionL2(signature, typedData, signerAddress)
             setCartesiTxId(res.id)
         }
     };
@@ -216,7 +177,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                     }
                 }
 
-                await rollups.erc20PortalContract.depositERC20Tokens(token, propos.dappAddress, ethers.utils.parseEther(`${amount}`), data);
+                await rollups.erc20PortalContract.depositERC20Tokens(token, props.dappAddress, ethers.utils.parseEther(`${amount}`), data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -230,7 +191,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 const txOverrides = { value: ethers.utils.parseEther(`${amount}`) }
 
                 // const tx = await ...
-                rollups.etherPortalContract.depositEther(propos.dappAddress, data, txOverrides);
+                rollups.etherPortalContract.depositEther(props.dappAddress, data, txOverrides);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -262,7 +223,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
 
                 // Transfer
-                rollups.erc721PortalContract.depositERC721Token(contractAddress, propos.dappAddress, nftid, "0x", data);
+                rollups.erc721PortalContract.depositERC721Token(contractAddress, props.dappAddress, nftid, "0x", data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -294,7 +255,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
 
                 // Transfer
-                rollups.erc1155SinglePortalContract.depositSingleERC1155Token(contractAddress, propos.dappAddress, id, amount, "0x", data);
+                rollups.erc1155SinglePortalContract.depositSingleERC1155Token(contractAddress, props.dappAddress, id, amount, "0x", data);
             }
         } catch (e) {
             console.log(`${e}`);
@@ -326,7 +287,7 @@ export const Input: React.FC<IInputPropos> = (propos) => {
                 }
 
                 // Transfer
-                rollups.erc1155BatchPortalContract.depositBatchERC1155Token(contractAddress, propos.dappAddress, ids, amounts, "0x", data);
+                rollups.erc1155BatchPortalContract.depositBatchERC1155Token(contractAddress, props.dappAddress, ids, amounts, "0x", data);
             }
         } catch (e) {
             console.log(`${e}`);
