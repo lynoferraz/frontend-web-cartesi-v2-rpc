@@ -105,11 +105,10 @@ export const Input: React.FC<IInputProps> = (props) => {
         return BigInt(nextNonce)
     }
 
-    const submitTransactionL2 = async (signature: string, typedData: any, msg_sender: any) => {
+    const submitTransactionL2 = async (signature: string, typedData: any) => {
         const body = JSON.stringify({
             signature,
             typedData,
-            msg_sender,
         })
         console.log(`curl -d '${body}' -H "Content-Type: application/json" -X POST ${paioDevSendTransactionUrl}`)
         const response = await fetch(paioDevSendTransactionUrl, {
@@ -131,14 +130,13 @@ export const Input: React.FC<IInputProps> = (props) => {
                 chain: sepolia,
                 transport: custom(window.ethereum!),
             })
-            const [account] = await walletClient.getAddresses()
-            typedData.account = account
             if (hexCartesiInput) {
                 payload = '0x' + payload
             }
             const app = namespace || props.dappAddress
             const signer = provider.getSigner();
             const signerAddress = await signer.getAddress()
+            typedData.account = signerAddress
             const nonce = await fetchNonceL2(signerAddress, app)
             console.log({ nonce })
             typedData.message = {
@@ -147,9 +145,8 @@ export const Input: React.FC<IInputProps> = (props) => {
                 data: payload,
                 max_gas_price: BigInt(10).toString(),
             }
-
             const signature = await walletClient.signTypedData(typedData);
-            const res = await submitTransactionL2(signature, typedData, signerAddress)
+            const res = await submitTransactionL2(signature, typedData)
             setCartesiTxId(res.id)
         }
     };
