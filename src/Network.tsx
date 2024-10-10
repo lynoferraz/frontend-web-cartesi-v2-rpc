@@ -12,6 +12,7 @@ interface Propos {
 export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,address:string|undefined):void}) => {
 
     const [chain, setChain] = useState<string|undefined>("0x7a69");
+    const [connectedChain, setConnectedChain] = useState<string|undefined>();
     const [walletAddress, setWalletAddress] = useState<string>();
     
     const accountsChanged = (accounts:string[]) => {
@@ -19,6 +20,7 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
             // MetaMask is locked or the user has not connected any accounts.
             setChain(undefined);
             setWalletAddress(undefined);
+            setConnectedChain(undefined);
             onChange(undefined,undefined);
             return;
         } else if (accounts[0] !== walletAddress) {
@@ -32,11 +34,13 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
             if (!accounts || accounts.length === 0) {
                 setChain(undefined);
                 setWalletAddress(undefined);
+                setConnectedChain(undefined);
                 onChange(undefined,undefined);
                 return;
             }
 
             setChain(chainId);
+            setConnectedChain(chainId);
             setWalletAddress(accounts[0]);
             onChange(chainId,accounts[0]);
         });
@@ -69,6 +73,7 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
                 return;
             }
 
+            setConnectedChain(chain);
             setWalletAddress(accounts[0]);
 
             onChange(chain,accounts[0]);
@@ -92,7 +97,7 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
                 }
                 value={chain}
                 >
-                {Object.entries(config.chains).map(([k, v]: [string, any], i) => {
+                {Object.entries(config.chains).map(([k, v]: [string, any], _) => {
                     return (
                         <option key={k} value={k}>
                             {v.label}
@@ -109,8 +114,8 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
             {walletAddress ? <div>
                 Connected wallet: {walletAddress}<br />
             </div> : <></>}
-            {walletAddress && chain ? <div>
-                Connected chainId: {parseInt(chain?.substring(2) ?? "0", 16)}<br />
+            {connectedChain ? <div>
+                Connected chainId: {parseInt(connectedChain?.substring(2) ?? "0", 16)}<br />
             </div> : <></>}
         </div>
     );

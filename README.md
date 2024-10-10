@@ -38,7 +38,7 @@ yarn codegen
 to build the app.
 
 ```shell
-yarn start
+yarn dev --port 3000
 ```
 
 Runs the app in the development mode.\

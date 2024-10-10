@@ -57,11 +57,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
         }
         let payload = n?.payload;
         if (payload) {
-            try {
-                payload = fromHex(payload as `0x${string}`, 'string');
-            } catch (e) {
-                payload = payload + " (hex)";
-            }
+            payload = payload + " (hex)";
         } else {
             payload = "(empty)";
         }
@@ -76,7 +72,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
         if (a.input.index === b.input.index) {
             return b.index - a.index;
         } else {
-            return b.input.index - a.input.index;
+            return Number(BigInt(b.input.id) - BigInt(a.input.id));
         }
     });
 

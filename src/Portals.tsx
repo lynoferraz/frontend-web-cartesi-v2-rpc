@@ -399,7 +399,7 @@ export const Portals: React.FC<IDepositProps> = (props) => {
                 <button onClick={() => Clear1155Batch()} disabled={!chainId}>
                     Clear Batch
                 </button>
-                <button onClick={() => transferErc1155BatchToPortal(erc1155 as `0x${string}`, erc1155Ids.map((v,i) => BigInt(v)), erc1155Amounts.map((v,i) => BigInt(v)))} disabled={!chainId}>
+                <button onClick={() => transferErc1155BatchToPortal(erc1155 as `0x${string}`, erc1155Ids.map((v,_) => BigInt(v)), erc1155Amounts.map((v,) => BigInt(v)))} disabled={!chainId}>
                     Transfer Batch 1155
                 </button>
             </div>

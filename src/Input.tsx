@@ -149,7 +149,7 @@ export const Input: React.FC<IProps> = (props: IProps) => {
                     typedData,
                     account,
                     signature,
-                }, (key, value) =>
+                }, (_, value) =>
                     typeof value === 'bigint'
                         ? parseInt(value.toString())
                         : value // return everything else unchanged
@@ -179,7 +179,7 @@ export const Input: React.FC<IProps> = (props: IProps) => {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                 />
-                <input type="checkbox" checked={hexInput} onChange={(e) => setHexInput(!hexInput)} /><span>Raw Hex </span>
+                <input type="checkbox" checked={hexInput} onChange={(_) => setHexInput(!hexInput)} /><span>Raw Hex </span>
                 <button onClick={() => addInput(input)} disabled={!chainId}>
                     Send
                 </button>
@@ -192,7 +192,7 @@ export const Input: React.FC<IProps> = (props: IProps) => {
                     value={l2Data}
                     onChange={(e) => setL2Data(e.target.value)}
                 />
-                <input type="checkbox" checked={hexCartesiInput} onChange={(e) => setHexCartesiInput(!hexCartesiInput)} /><span>Raw Hex </span>
+                <input type="checkbox" checked={hexCartesiInput} onChange={(_) => setHexCartesiInput(!hexCartesiInput)} /><span>Raw Hex </span>
                 <button onClick={() => addTransactionL2(l2Data)} disabled={!chainId}>
                     Send
                 </button>

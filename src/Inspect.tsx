@@ -58,8 +58,8 @@ export const Inspect: React.FC<Propos> = ({chainId}:{chainId:string}) => {
                     value={inspectData}
                     onChange={(e) => setInspectData(e.target.value)}
                 />
-                <input type="checkbox" checked={hexData} onChange={(e) => setHexData(!hexData)}/><span>Raw Hex </span>
-                <input type="checkbox" checked={postData} onChange={(e) => setPostData(!postData)}/><span>POST </span>
+                <input type="checkbox" checked={hexData} onChange={(_) => setHexData(!hexData)}/><span>Raw Hex </span>
+                <input type="checkbox" checked={postData} onChange={(_) => setPostData(!postData)}/><span>POST </span>
                 <button onClick={() => inspectCall(inspectData)} disabled={!chainId}>
                     Send
                 </button>

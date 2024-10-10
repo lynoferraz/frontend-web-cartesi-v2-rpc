@@ -16,22 +16,10 @@ const App: FC = () => {
 
     const [chainId, setChainId] = useState<string>();
 
-    const connect = (chain:string|undefined,address:string|undefined) => {
+    const connect = (chain:string|undefined,_:string|undefined) => {
       setChainId(chain)
     }
     
-    // useEffect(() => {
-    //     if (!connectedChain) {
-    //         setConnected(false);
-    //         return;
-    //     }
-    //     if (connectedChain?.id === "0x7a69") {
-    //         setAppAddress('0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e')
-    //     } else {
-    //         setAppAddress(undefined);
-    //     }
-    //     setConnected(true);
-    // }, [connectedChain])
     return (
         <div>
             <Network onChange={connect}/>

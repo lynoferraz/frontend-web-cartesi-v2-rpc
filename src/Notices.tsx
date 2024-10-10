@@ -38,6 +38,7 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
 
     const notices: PartialNotice[] = noticesData.map((node: PartialNotice) => {
         const n = node;
+        console.log(n)
         let inputPayload = n?.input?.payload;
         if (inputPayload) {
             try {
@@ -67,7 +68,7 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
         if (a.input.index === b.input.index) {
             return b.index - a.index;
         } else {
-            return b.input.index - a.input.index;
+            return Number(BigInt(b.input.id) - BigInt(a.input.id));
         }
     });
 
@@ -93,8 +94,8 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
                         </tr>
                     )}
                     {notices.map((n: any) => (
-                        <tr key={`${n.input.index}-${n.index}`}>
-                            <td>{n.input.index}</td>
+                        <tr key={`${n.input.id}-${n.index}`}>
+                            <td>{n.input.id}</td>
                             <td>{n.index}</td>
                             {/* <td>{n.input.payload}</td> */}
                             <td>{n.payload}</td>

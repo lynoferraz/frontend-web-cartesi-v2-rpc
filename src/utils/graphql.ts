@@ -83,6 +83,7 @@ export const getNotices = async (
     url: string
 ): Promise<PartialNotice[]> => {
     const data:NoticesQuery = await request(url, NoticesDocument)
+    console.log("graphql notice",data)
 
     if (data?.notices?.edges) {
         return data.notices.edges
