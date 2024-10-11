@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { fromHex } from 'viem'
+import { decodeFunctionData, fromHex } from 'viem'
 import { getGraphqlUrl, getNotices, PartialNotice } from './utils/graphql'
+import { Outputs__factory } from "@cartesi/rollups";
 
 interface Propos {
     chain:string
@@ -38,7 +39,6 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
 
     const notices: PartialNotice[] = noticesData.map((node: PartialNotice) => {
         const n = node;
-        console.log(n)
         let inputPayload = n?.input?.payload;
         if (inputPayload) {
             try {
@@ -49,8 +49,14 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
         } else {
             inputPayload = "(empty)";
         }
-        let payload = n?.payload;
-        if (payload) {
+        let payload_data = n?.payload;
+        let payload: string;
+        if (payload_data) {
+            const { args } = decodeFunctionData({
+                abi: Outputs__factory.abi,
+                data: payload_data as `0x${string}`
+            })
+            payload = args[0];
             try {
                 payload = fromHex(payload as `0x${string}`, 'string');
             } catch (e) {

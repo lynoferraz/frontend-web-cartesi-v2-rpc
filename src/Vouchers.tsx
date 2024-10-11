@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { fromHex } from 'viem'
+import { decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, slice } from 'viem'
 import { getGraphqlUrl, getVoucher, getVouchers, PartialVoucher } from './utils/graphql'
+import { Outputs__factory } from "@cartesi/rollups";
 
 
 type ExtendedVoucher = PartialVoucher & {
@@ -57,7 +58,85 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
         }
         let payload = n?.payload;
         if (payload) {
-            payload = payload + " (hex)";
+            const { args } = decodeFunctionData({
+                abi: Outputs__factory.abi,
+                data: payload as `0x${string}`
+            })
+            console.log("voucher",args)
+
+            const selector = args[2] && args[2].length > 4 ? slice(args[2] as `0x${string}`,0,4) : ""; 
+            const data = args[2] && args[2].length > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
+            console.log("selector",selector,data)
+
+            switch(selector.toLowerCase()) { 
+                case '0xa9059cbb': { 
+                    // erc20 transfer; 
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address receiver, uint256 amount'),
+                        data
+                    );
+                    payload = `Erc20 Transfer - Amount: ${decode[1]} - Address: ${decode[0]}`;
+                    break; 
+                }
+                case '0x42842e0e': { 
+                    //erc721 safe transfer;
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address sender, address receiver, uint256 id'),
+                        data
+                    );
+                    payload = `Erc721 Transfer - Id: ${decode[2]} - Address: ${decode[1]}`;
+                    break; 
+                }
+                case '0xf242432a': { 
+                    //erc155 single safe transfer;
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address sender, address receiver, uint256 id, uint256 amount'),
+                        data
+                    );
+                    payload = `Erc1155 Single Transfer - Id: ${decode[2]} Amount: ${decode[3]} - Address: ${decode[1]}`;
+                    break; 
+                }
+                case '0x2eb2c2d6': { 
+                    //erc155 Batch safe transfer;
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address sender, address receiver, uint256[] ids, uint256[] amounts'),
+                        data
+                    );
+                    payload = `Erc1155 Batch Transfer - Ids: ${decode[2]} Amounts: ${decode[3]} - Address: ${decode[1]}`;
+                    break; 
+                }
+                case '0xd0def521': { 
+                    //erc721 mint;
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address receiver, string url'),
+                        data
+                    );
+                    payload = `Mint Erc721 - String: ${decode[1]} - Address: ${decode[0]}`;
+                    break; 
+                }
+                case '0x755edd17': { 
+                    //erc721 mintTo;
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address receiver'),
+                        data
+                    );
+                    payload = `Mint Erc721 - Address: ${decode[0]}`;
+                    break; 
+                }
+                case '0x6a627842': { 
+                    //erc721 mint;
+                    const decode = decodeAbiParameters(
+                        parseAbiParameters('address receiver'),
+                        data
+                    );
+                    payload = `Mint Erc721 - Address: ${decode[0]}`;
+                    break; 
+                }
+                default: {
+                    payload = args[2] + " (hex)";
+                    break; 
+                }
+            }
         } else {
             payload = "(empty)";
         }
@@ -127,6 +206,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
                         <th>Input Id</th>
                         <th>Output Index</th>
                         <th>Destination</th>
+                        <th>Value</th>
                         <th>Action</th>
                         <th>Payload</th>
                     </tr>
@@ -142,6 +222,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
                             <td>{n.input.id}</td>
                             <td>{n.index}</td>
                             <td>{n.destination}</td>
+                            <td>{formatEther(fromHex(n.value,'bigint'))}</td>
                             <td>
                                 <button onClick={() => loadVoucher(n.index)}>Get Proof</button>
                             </td>
