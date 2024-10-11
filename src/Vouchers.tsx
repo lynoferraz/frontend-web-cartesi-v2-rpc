@@ -62,11 +62,9 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
                 abi: Outputs__factory.abi,
                 data: payload as `0x${string}`
             })
-            console.log("voucher",args)
 
             const selector = args[2] && args[2].length > 4 ? slice(args[2] as `0x${string}`,0,4) : ""; 
             const data = args[2] && args[2].length > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
-            console.log("selector",selector,data)
 
             switch(selector.toLowerCase()) { 
                 case '0xa9059cbb': { 
