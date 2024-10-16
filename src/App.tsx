@@ -2,7 +2,6 @@ import { FC } from "react";
 import { useState } from "react";
 
 import { Network } from "./Network";
-// import { Account, WalletOptions } from "./Network";
 import { Inspect } from "./Inspect";
 import { Input } from "./Input";
 import { Portals } from "./Portals";
@@ -11,7 +10,6 @@ import { Notices } from "./Notices";
 import { Vouchers } from "./Vouchers";
 
 const App: FC = () => {
-    // const [{ connectedChain }] = useSetChain();
     const [appAddress, setAppAddress] = useState<`0x${string}`|undefined>("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
 
     const [chainId, setChainId] = useState<string>();

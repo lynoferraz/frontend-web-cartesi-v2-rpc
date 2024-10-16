@@ -9,9 +9,9 @@ chains[mainnet.id] = mainnet;
 chains[sepolia.id] = sepolia;
 chains[anvil.id] = anvil;
 
-export function getChain(chainId:number):Chain;
-export function getChain(chainId:string):Chain;
-export function getChain(chainId:number|string) {
+export function getChain(chainId:number):Chain|null;
+export function getChain(chainId:string):Chain|null;
+export function getChain(chainId:number|string):Chain|null {
     if (typeof chainId === "string") {
         if (!isHex(chainId)) return null;
         chainId = fromHex(chainId, "number");

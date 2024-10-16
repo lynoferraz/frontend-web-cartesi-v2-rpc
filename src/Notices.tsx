@@ -71,11 +71,7 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
             input: (n && n.input?.id) ? {id:n.input.id,payload: inputPayload} : undefined,
         };
     }).sort((b: any, a: any) => {
-        if (a.input.index === b.input.index) {
-            return b.index - a.index;
-        } else {
-            return Number(BigInt(b.input.id) - BigInt(a.input.id));
-        }
+        return b.index - a.index;
     });
 
     // const forceUpdate = useForceUpdate();
