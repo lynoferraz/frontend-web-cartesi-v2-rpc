@@ -1,41 +1,45 @@
-// Copyright 2022 Cartesi Pte. Ltd.
 
-// Licensed under the Apache License, Version 2.0 (the "License"); you may not
-// use this file except in compliance with the License. You may obtain a copy
-// of the license at http://www.apache.org/licenses/LICENSE-2.0
+import React, { useEffect, useState } from "react";
+import { fromHex } from 'viem'
+import { getGraphqlUrl, getReports, PartialReport } from './utils/graphql'
+import { INodeComponentProps } from "./utils/chain";
 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-// License for the specific language governing permissions and limitations
-// under the License.
 
-import { ethers } from "ethers";
-import React from "react";
-import { useReportsQuery } from "./generated/graphql";
+export const Reports: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
+    const [fetching, setFetching] = useState<boolean>(false);
+    const [error, setError] = useState<string>();
+    const [reload, setReload] = useState<number>(0);
+    const [reportsData, setReportsData] = useState<PartialReport[]>([]);
 
-type Report = {
-    id: string;
-    index: number;
-    input: any, //{index: number; epoch: {index: number; }
-    payload: string;
-};
+    useEffect(() => {
+        if (!props.chain) {
+            setError("No connected chain");
+            return;
+        }
+        const url = getGraphqlUrl(props.chain,props.appAddress);
+        if (!url) {
+            setError("No chain graphql url");
+            return;
+        }
+        setFetching(true);
+        getReports(url).then(n => {
+            setReportsData(n);
+            setFetching(false);
+        });
 
-export const Reports: React.FC = () => {
-    const [result,reexecuteQuery] = useReportsQuery();
-    const { data, fetching, error } = result;
+    }, [props,reload]);
 
     if (fetching) return <p>Loading...</p>;
-    if (error) return <p>Oh no... {error.message}</p>;
+    if (error) return <p>Oh no... {error}</p>;
 
-    if (!data || !data.reports) return <p>No reports</p>;
+    if (!reportsData) return <p>No reports</p>;
 
-    const reports: Report[] = data.reports.edges.map((node: any) => {
-        const n = node.node;
-        let inputPayload = n?.input.payload;
+    const reports: PartialReport[] = reportsData.map((node: PartialReport) => {
+        const n = node;
+        let inputPayload = n?.input?.payload;
         if (inputPayload) {
             try {
-                inputPayload = ethers.utils.toUtf8String(inputPayload);
+                inputPayload = fromHex(inputPayload as `0x${string}`, 'string');
             } catch (e) {
                 inputPayload = inputPayload + " (hex)";
             }
@@ -44,8 +48,9 @@ export const Reports: React.FC = () => {
         }
         let payload = n?.payload;
         if (payload) {
+            let decoder = new TextDecoder("utf8", { fatal: true });
             try {
-                payload = ethers.utils.toUtf8String(payload);
+                payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
             } catch (e) {
                 payload = payload + " (hex)";
             }
@@ -53,31 +58,25 @@ export const Reports: React.FC = () => {
             payload = "(empty)";
         }
         return {
-            id: `${n?.id}`,
-            index: parseInt(n?.index),
+            index: n.index,
             payload: `${payload}`,
-            input: n ? {index:n.input.index,payload: inputPayload} : {},
+            input: (n && n.input?.id) ? {id:n.input.id,payload: inputPayload} : undefined,
         };
     }).sort((b: any, a: any) => {
-        if (a.input.index === b.input.index) {
-            return b.index - a.index;
-        } else {
-            return b.input.index - a.input.index;
-        }
+        return b.index - a.index;
     });
 
     // const forceUpdate = useForceUpdate();
     return (
         <div>
-            <button onClick={() => reexecuteQuery({ requestPolicy: 'network-only' })}>
+            <button onClick={() => setReload(reload+1)}>
                 Reload
             </button>
             <table>
                 <thead>
                     <tr>
-                        <th>Input Index</th>
-                        <th>Notice Index</th>
-                        {/* <th>Input Payload</th> */}
+                        <th>Input Id</th>
+                        <th>Report Index</th>
                         <th>Payload</th>
                     </tr>
                 </thead>
@@ -88,10 +87,9 @@ export const Reports: React.FC = () => {
                         </tr>
                     )}
                     {reports.map((n: any) => (
-                        <tr key={`${n.input.index}-${n.index}`}>
-                            <td>{n.input.index}</td>
+                        <tr key={`${n.input.id}-${n.index}`}>
+                            <td>{n.input.id}</td>
                             <td>{n.index}</td>
-                            {/* <td>{n.input.payload}</td> */}
                             <td>{n.payload}</td>
                         </tr>
                     ))}

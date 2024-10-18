@@ -1,43 +1,30 @@
-// Copyright 2022 Cartesi Pte. Ltd.
-
-// Licensed under the Apache License, Version 2.0 (the "License"); you may not
-// use this file except in compliance with the License. You may obtain a copy
-// of the license at http://www.apache.org/licenses/LICENSE-2.0
-
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-// License for the specific language governing permissions and limitations
-// under the License.
-
 import React, { useState } from "react";
-import { useSetChain } from "@web3-onboard/react";
-import { ethers } from "ethers";
-// import { useRollups } from "./useRollups";
+import { fromHex } from 'viem'
 
 import configFile from "./config.json";
+import { INodeComponentProps } from "./utils/chain";
 
 const config: any = configFile;
 
-export const Inspect: React.FC = () => {
-    // const rollups = useRollups();
-    const [{ connectedChain }] = useSetChain();
+
+export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps) => {
+    
     const inspectCall = async (str: string) => {
         let payload = str;
         if (hexData) {
-            const uint8array = ethers.utils.arrayify(str);
+            const uint8array = fromHex(str as `0x${string}`,'bytes');
             payload = new TextDecoder().decode(uint8array);
         }
-        if (!connectedChain){
+        if (!props.chain){
             return;
         }
         
         let apiURL= ""
 
-        if(config[connectedChain.id]?.inspectAPIURL) {
-            apiURL = `${config[connectedChain.id].inspectAPIURL}/inspect`;
+        if(config.chains[props.chain]?.inspectAPIURL) {
+            apiURL = `${config.chains[props.chain].inspectAPIURL}/inspect/${props.appAddress}`;
         } else {
-            console.error(`No inspect interface defined for chain ${connectedChain.id}`);
+            console.error(`No inspect interface defined for chain ${props.chain}`);
             return;
         }
         
@@ -69,9 +56,9 @@ export const Inspect: React.FC = () => {
                     value={inspectData}
                     onChange={(e) => setInspectData(e.target.value)}
                 />
-                <input type="checkbox" checked={hexData} onChange={(e) => setHexData(!hexData)}/><span>Raw Hex </span>
-                <input type="checkbox" checked={postData} onChange={(e) => setPostData(!postData)}/><span>POST </span>
-                <button onClick={() => inspectCall(inspectData)}>
+                <input type="checkbox" checked={hexData} onChange={(_) => setHexData(!hexData)}/><span>Raw Hex </span>
+                <input type="checkbox" checked={postData} onChange={(_) => setPostData(!postData)}/><span>POST </span>
+                <button onClick={() => inspectCall(inspectData)} disabled={!props.chain}>
                     Send
                 </button>
             </div>
@@ -90,7 +77,7 @@ export const Inspect: React.FC = () => {
                         <td>{metadata.metadata ? metadata.metadata.active_epoch_index : ""}</td>
                         <td>{metadata.metadata ? metadata.metadata.current_input_index : ""}</td>
                         <td>{metadata.status}</td>
-                        <td>{metadata.exception_payload ? ethers.utils.toUtf8String(metadata.exception_payload): ""}</td>
+                        <td>{metadata.exception_payload ? fromHex(metadata.exception_payload, 'string'): ""}</td>
                     </tr>
                 </tbody>
             </table>
@@ -104,7 +91,7 @@ export const Inspect: React.FC = () => {
                     )}
                     {reports?.map((n: any) => (
                         <tr key={`${n.payload}`}>
-                            <td>{ethers.utils.toUtf8String(n.payload)}</td>
+                            <td>{fromHex(n.payload, 'string')}</td>
                         </tr>
                     ))}
                 </tbody>
