@@ -22,12 +22,12 @@ import configFile from "../config.json";
 const config: any = configFile;
 
 
-export const getGraphqlUrl = (chainId: string): string|null => {
+export const getGraphqlUrl = (chainId: string, appAddress: string): string|null => {
 
     let url = "";
 
     if(config.chains[chainId]?.graphqlAPIURL) {
-        url = `${config.chains[chainId].graphqlAPIURL}/graphql`;
+        url = `${config.chains[chainId].graphqlAPIURL}/graphql/${appAddress}`;
     } else {
         console.error(`No GraphQL interface defined for chain ${chainId}`);
         return null;
@@ -67,9 +67,7 @@ export const getReports = async (
 };
 
 
-export type PartialProof = Pick<Proof, "__typename" | "outputIndex" | "validityInputIndexWithinEpoch" | 
-    "validityMachineStateHash" | "validityOutputEpochRootHash" | "validityOutputHashInOutputHashesSiblings" |
-    "validityOutputHashesInEpochSiblings" | "validityOutputHashesRootHash" | "validityOutputIndexWithinInput">;
+export type PartialProof = Pick<Proof, "__typename" | "outputIndex" | "outputHashesSiblings">;
 
 export type PartialNotice = Pick<Notice, "__typename" | "index" | "payload"> & {
     input?: PartialInput;

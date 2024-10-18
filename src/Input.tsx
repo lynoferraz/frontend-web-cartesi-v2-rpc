@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { InputBox__factory } from "@cartesi/rollups";
 
-import { getClient, getWalletClient } from "./utils/chain";
+import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 
 import configFile from "./config.json";
 import { PublicClient, toHex } from "viem";
 
 const config: any = configFile;
 
-interface IProps {
-    appAddress: `0x${string}`,
-    chain:string
-}
-
-export const Input: React.FC<IProps> = (props: IProps) => {
+export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
 
     const [chainId, setChainId] = useState<string>();
 
@@ -43,7 +38,7 @@ export const Input: React.FC<IProps> = (props: IProps) => {
 
                 const { request } = await client.simulateContract({
                     account: address,
-                    address: config.contracAddresses.InputBoxAddress as `0x${string}`,
+                    address: config.contracAddresses.InputBox as `0x${string}`,
                     abi: InputBox__factory.abi,
                     functionName: 'addInput',
                     args: [props.appAddress, payload]

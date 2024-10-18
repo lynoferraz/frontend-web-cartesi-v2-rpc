@@ -2,23 +2,21 @@ import React, { useEffect, useState } from "react";
 import { decodeFunctionData, fromHex } from 'viem'
 import { getGraphqlUrl, getNotices, PartialNotice } from './utils/graphql'
 import { Outputs__factory } from "@cartesi/rollups";
+import { INodeComponentProps } from "./utils/chain";
 
-interface Propos {
-    chain:string
-}
 
-export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
+export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [fetching, setFetching] = useState<boolean>(false);
     const [error, setError] = useState<string>();
     const [reload, setReload] = useState<number>(0);
     const [noticesData, setNoticesData] = useState<PartialNotice[]>([]);
 
     useEffect(() => {
-        if (!chain) {
+        if (!props.chain) {
             setError("No connected chain");
             return;
         }
-        const url = getGraphqlUrl(chain);
+        const url = getGraphqlUrl(props.chain,props.appAddress);
         if (!url) {
             setError("No chain graphql url");
             return;
@@ -29,7 +27,7 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
             setFetching(false);
         });
 
-    }, [chain,reload]);
+    }, [props,reload]);
 
     
     if (fetching) return <p>Loading...</p>;
@@ -57,8 +55,9 @@ export const Notices: React.FC<Propos> = ({chain}:{chain:string}) => {
                 data: payload_data as `0x${string}`
             })
             payload = args[0];
+            let decoder = new TextDecoder("utf8", { fatal: true });
             try {
-                payload = fromHex(payload as `0x${string}`, 'string');
+                payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
             } catch (e) {
                 payload = payload + " (hex)";
             }

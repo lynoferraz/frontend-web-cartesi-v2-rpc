@@ -30,17 +30,17 @@ const App: FC = () => {
                     />
                     <br /><br />
                 </div>
-                <h2>Inspect</h2>
-                <Inspect chainId={chainId} />
                 { appAddress ? <>
+                    <h2>Inspect</h2>
+                    <Inspect chain={chainId} appAddress={appAddress} />
                     <h2>Input</h2>
-                    <Input appAddress={appAddress} chain={chainId} />
+                    <Input chain={chainId} appAddress={appAddress} />
                     <h2>Portals</h2>
                     <Portals chain={chainId} appAddress={appAddress} />
                     <h2>Reports</h2>
-                    <Reports chain={chainId} />
+                    <Reports chain={chainId} appAddress={appAddress} />
                     <h2>Notices</h2>
-                    <Notices chain={chainId} />
+                    <Notices chain={chainId} appAddress={appAddress} />
                     <h2>Vouchers</h2>
                     <Vouchers chain={chainId} appAddress={appAddress} />
                 </> : <></> }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, slice } from 'viem'
 import { getGraphqlUrl, getVoucher, getVouchers, PartialVoucher } from './utils/graphql'
 import { Outputs__factory } from "@cartesi/rollups";
+import { INodeComponentProps } from "./utils/chain";
 
 
 type ExtendedVoucher = PartialVoucher & {
@@ -9,12 +10,7 @@ type ExtendedVoucher = PartialVoucher & {
 };
 
 
-interface IProps {
-    appAddress: `0x${string}`,
-    chain:string
-}
-
-export const Vouchers: React.FC<IProps> = (props: IProps) => {
+export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [fetching, setFetching] = useState<boolean>(false);
     const [error, setError] = useState<string>();
     const [reload, setReload] = useState<number>(0);
@@ -26,7 +22,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
             setError("No connected chain");
             return;
         }
-        const url = getGraphqlUrl(props.chain);
+        const url = getGraphqlUrl(props.chain,props.appAddress);
         if (!url) {
             setError("No chain graphql url");
             return;
@@ -37,7 +33,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
             setFetching(false);
         });
 
-    }, [props.chain,reload]);
+    }, [props,reload]);
 
     if (fetching) return <p>Loading...</p>;
     if (error) return <p>Oh no... {error}</p>;
@@ -150,7 +146,7 @@ export const Vouchers: React.FC<IProps> = (props: IProps) => {
     });
 
     const loadVoucher = async (outputIndex: number) => {
-        const url = getGraphqlUrl(props.chain);
+        const url = getGraphqlUrl(props.chain,props.appAddress);
         if (!url) {
             return;
         }

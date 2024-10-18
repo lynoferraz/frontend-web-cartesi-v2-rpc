@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getClient, getWalletClient } from "./utils/chain";
+import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 import { erc20Abi, erc721Abi, parseEther, parseUnits, toHex } from "viem";
 
 import configFile from "./config.json";
@@ -8,12 +8,8 @@ import { ERC1155BatchPortal__factory, ERC1155SinglePortal__factory, ERC20Portal_
 
 const config: any = configFile;
 
-interface IDepositProps {
-    appAddress: `0x${string}`,
-    chain:string
-}
 
-export const Portals: React.FC<IDepositProps> = (props) => {
+export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [chainId, setChainId] = useState<string>();
 
     const [erc20Amount, setErc20Amount] = useState<string>("0");
@@ -54,7 +50,7 @@ export const Portals: React.FC<IDepositProps> = (props) => {
 
                 const { request } = await client.simulateContract({
                     account: address,
-                    address: config.contracAddresses.EtherPortalAddress as `0x${string}`,
+                    address: config.contracAddresses.EtherPortal as `0x${string}`,
                     abi: EtherPortal__factory.abi,
                     functionName: "depositEther",
                     args: [props.appAddress, data],
@@ -83,7 +79,7 @@ export const Portals: React.FC<IDepositProps> = (props) => {
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc20PortalAddress as `0x${string}`;
+                const portalAddress = config.contracAddresses.Erc20Portal as `0x${string}`;
 
                 const currAllowance = await client.readContract({
                     address: token,
@@ -139,7 +135,7 @@ export const Portals: React.FC<IDepositProps> = (props) => {
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc721PortalAddress as `0x${string}`;
+                const portalAddress = config.contracAddresses.Erc721Portal as `0x${string}`;
 
                 const currentApproval = await client.readContract({
                     address: token,
@@ -196,7 +192,7 @@ export const Portals: React.FC<IDepositProps> = (props) => {
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc1155SinglePortalAddress as `0x${string}`;
+                const portalAddress = config.contracAddresses.Erc1155SinglePortal as `0x${string}`;
 
                 const currentApproval = await client.readContract({
                     address: token,
@@ -253,7 +249,7 @@ export const Portals: React.FC<IDepositProps> = (props) => {
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc1155BatchPortalAddress as `0x${string}`;
+                const portalAddress = config.contracAddresses.Erc1155BatchPortal as `0x${string}`;
 
                 const currentApproval = await client.readContract({
                     address: token,

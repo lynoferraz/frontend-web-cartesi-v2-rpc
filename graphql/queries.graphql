@@ -11,13 +11,7 @@ query notice($outputIndex: Int!) {
     payload
     proof {
       outputIndex
-      validityInputIndexWithinEpoch
-      validityMachineStateHash
-      validityOutputEpochRootHash
-      validityOutputHashInOutputHashesSiblings
-      validityOutputHashesInEpochSiblings
-      validityOutputHashesRootHash
-      validityOutputIndexWithinInput
+      outputHashesSiblings
     }
   }
 }
@@ -54,13 +48,7 @@ query voucher($outputIndex: Int!) {
     payload
     proof {
       outputIndex
-      validityInputIndexWithinEpoch
-      validityMachineStateHash
-      validityOutputEpochRootHash
-      validityOutputHashInOutputHashesSiblings
-      validityOutputHashesInEpochSiblings
-      validityOutputHashesRootHash
-      validityOutputIndexWithinInput
+      outputHashesSiblings
     }
   }
 }

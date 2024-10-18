@@ -2,24 +2,21 @@
 import React, { useEffect, useState } from "react";
 import { fromHex } from 'viem'
 import { getGraphqlUrl, getReports, PartialReport } from './utils/graphql'
+import { INodeComponentProps } from "./utils/chain";
 
 
-interface Propos {
-    chain:string
-}
-
-export const Reports: React.FC<Propos> = ({chain}:{chain:string}) => {
+export const Reports: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [fetching, setFetching] = useState<boolean>(false);
     const [error, setError] = useState<string>();
     const [reload, setReload] = useState<number>(0);
     const [reportsData, setReportsData] = useState<PartialReport[]>([]);
 
     useEffect(() => {
-        if (!chain) {
+        if (!props.chain) {
             setError("No connected chain");
             return;
         }
-        const url = getGraphqlUrl(chain);
+        const url = getGraphqlUrl(props.chain,props.appAddress);
         if (!url) {
             setError("No chain graphql url");
             return;
@@ -30,7 +27,7 @@ export const Reports: React.FC<Propos> = ({chain}:{chain:string}) => {
             setFetching(false);
         });
 
-    }, [chain,reload]);
+    }, [props,reload]);
 
     if (fetching) return <p>Loading...</p>;
     if (error) return <p>Oh no... {error}</p>;
@@ -51,8 +48,9 @@ export const Reports: React.FC<Propos> = ({chain}:{chain:string}) => {
         }
         let payload = n?.payload;
         if (payload) {
+            let decoder = new TextDecoder("utf8", { fatal: true });
             try {
-                payload = fromHex(payload as `0x${string}`, 'string');
+                payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
             } catch (e) {
                 payload = payload + " (hex)";
             }

@@ -4,6 +4,11 @@ import { isHex, fromHex, createPublicClient, http,
 
 import { anvil, mainnet, sepolia, Chain } from 'viem/chains';
 
+export interface INodeComponentProps {
+    appAddress: `0x${string}`,
+    chain:string
+}
+
 let chains:Record<number, Chain> = {};
 chains[mainnet.id] = mainnet;
 chains[sepolia.id] = sepolia;

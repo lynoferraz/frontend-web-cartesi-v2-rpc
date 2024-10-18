@@ -2,14 +2,12 @@ import React, { useState } from "react";
 import { fromHex } from 'viem'
 
 import configFile from "./config.json";
+import { INodeComponentProps } from "./utils/chain";
 
 const config: any = configFile;
 
-interface Propos {
-    chainId:string
-}
 
-export const Inspect: React.FC<Propos> = ({chainId}:{chainId:string}) => {
+export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps) => {
     
     const inspectCall = async (str: string) => {
         let payload = str;
@@ -17,16 +15,16 @@ export const Inspect: React.FC<Propos> = ({chainId}:{chainId:string}) => {
             const uint8array = fromHex(str as `0x${string}`,'bytes');
             payload = new TextDecoder().decode(uint8array);
         }
-        if (!chainId){
+        if (!props.chain){
             return;
         }
         
         let apiURL= ""
 
-        if(config.chains[chainId]?.inspectAPIURL) {
-            apiURL = `${config.chains[chainId].inspectAPIURL}/inspect`;
+        if(config.chains[props.chain]?.inspectAPIURL) {
+            apiURL = `${config.chains[props.chain].inspectAPIURL}/inspect/${props.appAddress}`;
         } else {
-            console.error(`No inspect interface defined for chain ${chainId}`);
+            console.error(`No inspect interface defined for chain ${props.chain}`);
             return;
         }
         
@@ -60,7 +58,7 @@ export const Inspect: React.FC<Propos> = ({chainId}:{chainId:string}) => {
                 />
                 <input type="checkbox" checked={hexData} onChange={(_) => setHexData(!hexData)}/><span>Raw Hex </span>
                 <input type="checkbox" checked={postData} onChange={(_) => setPostData(!postData)}/><span>POST </span>
-                <button onClick={() => inspectCall(inspectData)} disabled={!chainId}>
+                <button onClick={() => inspectCall(inspectData)} disabled={!props.chain}>
                     Send
                 </button>
             </div>
