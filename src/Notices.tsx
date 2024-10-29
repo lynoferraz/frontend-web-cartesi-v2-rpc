@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { decodeFunctionData, fromHex } from 'viem'
-import { getGraphqlUrl, getNotices, PartialNotice } from './utils/graphql'
-import { Outputs__factory } from "@cartesi/rollups";
-import { INodeComponentProps } from "./utils/chain";
+import { decodeFunctionData, fromHex, PublicClient } from 'viem'
+import { getGraphqlUrl, getNotice, getNotices, PartialNotice } from './utils/graphql'
+import { Application__factory, Outputs__factory } from "@cartesi/rollups";
+import { getClient, INodeComponentProps } from "./utils/chain";
 
 
 export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
@@ -10,6 +10,8 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
     const [error, setError] = useState<string>();
     const [reload, setReload] = useState<number>(0);
     const [noticesData, setNoticesData] = useState<PartialNotice[]>([]);
+    const [noticeToValidate, setNoticeToValidate] = useState<PartialNotice>();
+    const [validateNoticeMsg, setValidateNoticeMsg] = useState<string>();
 
     useEffect(() => {
         if (!props.chain) {
@@ -21,6 +23,8 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
             setError("No chain graphql url");
             return;
         }
+        setNoticeToValidate(undefined);
+        setValidateNoticeMsg(undefined);
         setFetching(true);
         getNotices(url).then(n => {
             setNoticesData(n);
@@ -73,9 +77,77 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
         return b.index - a.index;
     });
 
+    const loadNotice = async (outputIndex: number) => {
+        const url = getGraphqlUrl(props.chain,props.appAddress);
+        if (!url) {
+            return;
+        }
+        const notice = await getNotice(url,outputIndex);
+
+        setNoticeToValidate(notice);
+        setValidateNoticeMsg(undefined);
+    };
+
+
+    const validateNotice = async (notice: PartialNotice) => {
+        if (!notice || !notice.payload) {
+            setValidateNoticeMsg("no notice");
+            return
+        }
+        if (!notice.proof || !notice.proof.outputHashesSiblings || notice.proof.outputHashesSiblings.length == 0) {
+            setValidateNoticeMsg("no proof");
+            return
+        }
+        setValidateNoticeMsg(undefined);
+        if (props.chain && props.appAddress && notice) {
+            const client = await getClient(props.chain);
+
+            if (!client) return;
+
+            try {
+                const outputIndex = notice.proof.outputIndex;
+                const outputHashesSiblings: `0x${string}`[] = notice.proof.outputHashesSiblings as `0x${string}`[] ;
+                await client.readContract({
+                    address: props.appAddress,
+                    abi: Application__factory.abi,
+                    functionName: 'validateOutput',
+                    args: [notice.payload as `0x${string}`,{outputIndex,outputHashesSiblings}]
+                });
+                setValidateNoticeMsg("Notice is Valid!");
+            } catch (e: any) {
+                console.log(e);
+                setValidateNoticeMsg(e?.cause?.data?.errorName ? e?.cause?.data?.errorName : e?.cause?.shortMessage);
+            }
+        }
+
+    }
+
     // const forceUpdate = useForceUpdate();
     return (
         <div>
+            <p>Notice to Validate</p>
+            {noticeToValidate ? <table>
+                <thead>
+                    <tr>
+                        <th>Input Id</th>
+                        <th>Notice Output Index</th>
+                        <th>Action</th>
+                        {/* <th>Payload</th> */}
+                        <th>Msg</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr key={`${noticeToValidate.input?.id}-${noticeToValidate.index}`}>
+                        <td>{noticeToValidate.input?.id}</td>
+                        <td>{noticeToValidate.index}</td>
+                        <td>
+                            <button disabled={!noticeToValidate.proof} onClick={() => validateNotice(noticeToValidate)}>{noticeToValidate.proof ? "Validate Notice" : "No proof yet"}</button>
+                        </td>
+                        {/* <td>{voucherToExecute.payload}</td> */}
+                        <td>{validateNoticeMsg}</td>
+                    </tr>
+                </tbody>
+            </table> : <p>Nothing yet</p>}
             <button onClick={() => setReload(reload+1)}>
                 Reload
             </button>
@@ -85,6 +157,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
                         <th>Input Id</th>
                         <th>Notice Output Index</th>
                         {/* <th>Input Payload</th> */}
+                        <th>Action</th>
                         <th>Payload</th>
                     </tr>
                 </thead>
@@ -99,6 +172,9 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
                             <td>{n.input.id}</td>
                             <td>{n.index}</td>
                             {/* <td>{n.input.payload}</td> */}
+                            <td>
+                                <button onClick={() => loadNotice(n.index)}>Get Proof</button>
+                            </td>
                             <td>{n.payload}</td>
                         </tr>
                     ))}

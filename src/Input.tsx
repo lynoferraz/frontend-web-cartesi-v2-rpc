@@ -4,7 +4,7 @@ import { InputBox__factory } from "@cartesi/rollups";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 
 import configFile from "./config.json";
-import { PublicClient, toHex } from "viem";
+import { toHex } from "viem";
 
 const config: any = configFile;
 
@@ -23,7 +23,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
 
     const addInput = async (str: string) => {
         if (chainId) {
-            const client: PublicClient|null = await getClient(chainId);
+            const client = await getClient(chainId);
             const walletClient = await getWalletClient(chainId);
 
             if (!client || !walletClient) return;
@@ -53,9 +53,6 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
             }
         }
     };
-
-    const l2DevNonceUrl = "http://localhost:8080/nonce"
-    const l2DevSendTransactionUrl = "http://localhost:8080/submit"
 
     let typedData = {
         domain: {
@@ -89,7 +86,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
     }
 
     const fetchNonceL2 = async (user: any, application: any) => {
-        const response = await fetch(l2DevNonceUrl, {
+        const response = await fetch(`${config.chains[props.chain].l2EIP712Url}/nonce`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -104,7 +101,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
 
     const submitTransactionL2 = async (fullBody: any) => {
         const body = JSON.stringify(fullBody)
-        const response = await fetch(l2DevSendTransactionUrl, {
+        const response = await fetch(`${config.chains[props.chain].l2EIP712Url}/submit`, {
             method: 'POST',
             body,
             headers: { 'Content-Type': 'application/json' }

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, slice } from 'viem'
+import { decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, size, slice } from 'viem'
 import { getGraphqlUrl, getVoucher, getVouchers, PartialVoucher } from './utils/graphql'
-import { Outputs__factory } from "@cartesi/rollups";
-import { INodeComponentProps } from "./utils/chain";
+import { Outputs__factory, Application__factory } from "@cartesi/rollups";
+import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 
 
 type ExtendedVoucher = PartialVoucher & {
@@ -16,6 +16,7 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
     const [reload, setReload] = useState<number>(0);
     const [vouchersData, setVouchersData] = useState<PartialVoucher[]>([]);
     const [voucherToExecute, setVoucherToExecute] = useState<ExtendedVoucher>();
+    const [voucherToExecuteMsg, setVoucherToExecuteMsg] = useState<string>();
 
     useEffect(() => {
         if (!props.chain) {
@@ -28,6 +29,8 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             return;
         }
         setFetching(true);
+        setVoucherToExecute(undefined);
+        setVoucherToExecuteMsg(undefined);
         getVouchers(url).then(n => {
             setVouchersData(n);
             setFetching(false);
@@ -44,11 +47,7 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
         const n = node;
         let inputPayload = n?.input?.payload;
         if (inputPayload) {
-            try {
-                inputPayload = fromHex(inputPayload as `0x${string}`, 'string');
-            } catch (e) {
-                inputPayload = inputPayload + " (hex)";
-            }
+            inputPayload = inputPayload + " (hex)";
         } else {
             inputPayload = "(empty)";
         }
@@ -58,9 +57,8 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                 abi: Outputs__factory.abi,
                 data: payload as `0x${string}`
             })
-
-            const selector = args[2] && args[2].length > 4 ? slice(args[2] as `0x${string}`,0,4) : ""; 
-            const data = args[2] && args[2].length > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
+            const selector = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,0,4) : ""; 
+            const data = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
 
             switch(selector.toLowerCase()) { 
                 case '0xa9059cbb': { 
@@ -150,15 +148,70 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
         if (!url) {
             return;
         }
-        const voucher = await getVoucher(url,outputIndex);
+        const voucher: ExtendedVoucher = await getVoucher(url,outputIndex) as ExtendedVoucher;
 
-        // TODO: set was executed
-
+        if (props.chain && props.appAddress && voucher) {
+            const client = await getClient(props.chain);
+            if (client) {
+                const executed = await client.readContract({
+                    address: props.appAddress,
+                    abi: Application__factory.abi,
+                    functionName: 'wasOutputExecuted',
+                    args: [BigInt(voucher.index)]
+                });
+                voucher.executed = executed;
+            }
+        }
+        setVoucherToExecuteMsg(undefined);
         setVoucherToExecute(voucher);
     };
 
 
     // TODO: execute voucher function
+    const executeVoucher = async (voucher: ExtendedVoucher) => {
+        if (!voucher || !voucher.payload) {
+            setVoucherToExecuteMsg("no voucher");
+            return
+        }
+        if (!voucher.proof || !voucher.proof.outputHashesSiblings || voucher.proof.outputHashesSiblings.length == 0) {
+            setVoucherToExecuteMsg("no proof");
+            return
+        }
+        setVoucherToExecuteMsg(undefined);
+        if (props.chain && props.appAddress && voucher) {
+            const client = await getClient(props.chain);
+            const walletClient = await getWalletClient(props.chain);
+
+            if (!client || !walletClient) return;
+
+            const [address] = await walletClient.requestAddresses();
+            if (!address) return;
+            try {
+
+                const outputIndex = voucher.proof.outputIndex;
+                const outputHashesSiblings: `0x${string}`[] = voucher.proof.outputHashesSiblings as `0x${string}`[] ;
+                const { request } = await client.simulateContract({
+                    account: address,
+                    address: props.appAddress,
+                    abi: Application__factory.abi,
+                    functionName: 'executeOutput',
+                    args: [voucher.payload as `0x${string}`,{outputIndex,outputHashesSiblings}]
+                });
+                const txHash = await walletClient.writeContract(request);
+            
+                await client.waitForTransactionReceipt( 
+                    { hash: txHash }
+                )
+                setVoucherToExecuteMsg("Voucher executed!");
+                voucher.executed = true;
+                setVoucherToExecute(voucher);
+            } catch (e: any) {
+                console.log(e);
+                setVoucherToExecuteMsg(e?.cause?.shortMessage);
+            }
+        }
+
+    }
 
     return (
         <div>
@@ -169,9 +222,10 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                     <th>Input Id</th>
                     <th>Voucher Output Index</th>
                     <th>Destination</th>
+                    <th>Value</th>
                     <th>Action</th>
-                    <th>Input Payload</th>
-                    {/* <th>Msg</th> */}
+                    {/* <th>Payload</th> */}
+                    <th>Msg</th>
                 </tr>
             </thead>
             <tbody>
@@ -179,11 +233,12 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                     <td>{voucherToExecute.input?.id}</td>
                     <td>{voucherToExecute.index}</td>
                     <td>{voucherToExecute.destination}</td>
+                    <td>{formatEther(fromHex(voucherToExecute.value,'bigint'))}</td>
                     <td>
-                        {/* <button disabled={!voucherToExecute.proof || voucherToExecute.executed} onClick={() => executeVoucher(voucherToExecute)}>{voucherToExecute.proof ? (voucherToExecute.executed ? "Voucher executed" : "Execute voucher") : "No proof yet"}</button> */}
+                        <button disabled={!voucherToExecute.proof || voucherToExecute.executed} onClick={() => executeVoucher(voucherToExecute)}>{voucherToExecute.proof ? (voucherToExecute.executed ? "Voucher executed" : "Execute voucher") : "No proof yet"}</button>
                     </td>
-                    <td>{voucherToExecute.input?.payload}</td>
-                    {/* <td>{voucherToExecute.msg}</td> */}
+                    {/* <td>{voucherToExecute.payload}</td> */}
+                    <td>{voucherToExecuteMsg}</td>
                 </tr>
             </tbody>
         </table> : <p>Nothing yet</p>}
