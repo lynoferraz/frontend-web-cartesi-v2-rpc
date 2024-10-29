@@ -15,6 +15,8 @@ import {
     VouchersQuery,
     VoucherQuery,
     Proof,
+    NoticeQuery,
+    NoticeDocument,
 } from "../generated/graphql";
 
 import configFile from "../config.json";
@@ -90,6 +92,15 @@ export const getNotices = async (
         return [];
     }
 };
+
+export const getNotice = async (
+    url: string,
+    outputIndex: number
+): Promise<PartialNotice|undefined> => {
+    const data:NoticeQuery = await request(url, NoticeDocument,{outputIndex});
+    return data?.notice ? data.notice : undefined;
+};
+
 
 
 

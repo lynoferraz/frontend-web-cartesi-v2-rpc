@@ -20,7 +20,8 @@ With this project you can test some interactions with the Cartesi Rollups projec
 10. Listing Notices
 11. Listing Reports
 12. Listing Vouchers
-13. TODO: Executing Vouchers
+13. Validating Notices
+14. Executing Vouchers
 
 ## Configurtion
 

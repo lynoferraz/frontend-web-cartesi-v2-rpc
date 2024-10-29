@@ -8,7 +8,12 @@ const config: any = configFile;
 
 
 export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps) => {
-    
+    const [inspectData, setInspectData] = useState<string>("");
+    const [reports, setReports] = useState<string[]>([]);
+    const [metadata, setMetadata] = useState<any>({});
+    const [hexData, setHexData] = useState<boolean>(false);
+    const [postData, setPostData] = useState<boolean>(false);
+
     const inspectCall = async (str: string) => {
         let payload = str;
         if (hexData) {
@@ -33,7 +38,7 @@ export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps
             const payloadBlob = new TextEncoder().encode(payload);
             fetchData = fetch(`${apiURL}`, { method: 'POST', body: payloadBlob });
         } else {
-            fetchData = fetch(`${apiURL}/${payload}`);
+            fetchData = fetch(`${apiURL}/${encodeURIComponent(payload)}`);
         }
         fetchData
             .then(response => response.json())
@@ -42,12 +47,6 @@ export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps
                 setMetadata({metadata:data.metadata, status: data.status, exception_payload: data.exception_payload});
             });
     };
-    const [inspectData, setInspectData] = useState<string>("");
-    const [reports, setReports] = useState<string[]>([]);
-    const [metadata, setMetadata] = useState<any>({});
-    const [hexData, setHexData] = useState<boolean>(false);
-    const [postData, setPostData] = useState<boolean>(false);
-
     return (
         <div>
             <div>

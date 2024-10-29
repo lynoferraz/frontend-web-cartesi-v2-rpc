@@ -5,19 +5,22 @@
             "label": "localhost",
             "rpcUrl": "http://localhost:8545",
             "graphqlAPIURL" : "http://localhost:8080",
-            "inspectAPIURL":"http://localhost:8080"
+            "inspectAPIURL":"http://localhost:8080",
+            "l2EIP712Url":"http://localhost:8080"
         },
         "0xaa36a7":{
             "token": "SepETH",
             "label": "Sepolia Test Network",
             "graphqlAPIURL" : "http://localhost:8080",
-            "inspectAPIURL":"http://localhost:8080"
+            "inspectAPIURL":"http://localhost:8080",
+            "l2EIP712Url":"http://localhost:8080"
         },
         "0x1":{
             "token": "ETH",
             "label": "Ethereum Mainnet",
             "graphqlAPIURL" : "http://localhost:8080",
-            "inspectAPIURL":"http://localhost:8080"
+            "inspectAPIURL":"http://localhost:8080",
+            "l2EIP712Url":"http://localhost:8080"
         }
     },
     "contracAddresses": {
