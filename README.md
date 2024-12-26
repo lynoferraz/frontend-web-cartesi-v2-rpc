@@ -54,5 +54,5 @@ As a reminder, you can advance time in hardhat with the command:
 curl -H "Content-Type: application/json" http://localhost:8545 -d '{"id":1337,"jsonrpc":"2.0","method":"anvil_mine","params":[7200]}' 
 ```
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/lynoferraz/frontend-web-cartesi)
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/Calindra/frontend-web-cartesi)
 
