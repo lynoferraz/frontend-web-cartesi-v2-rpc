@@ -54,7 +54,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
         }
     };
 
-    let typedData = {
+    const typedData = {
         domain: {
             name: "Cartesi",
             version: "0.1.0",

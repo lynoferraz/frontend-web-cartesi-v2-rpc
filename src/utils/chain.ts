@@ -9,7 +9,7 @@ export interface INodeComponentProps {
     chain:string
 }
 
-let chains:Record<number, Chain> = {};
+const chains:Record<number, Chain> = {};
 chains[mainnet.id] = mainnet;
 chains[sepolia.id] = sepolia;
 chains[anvil.id] = anvil;

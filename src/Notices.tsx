@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { decodeFunctionData, fromHex, PublicClient } from 'viem'
+import { decodeFunctionData, fromHex } from 'viem'
 import { getGraphqlUrl, getNotice, getNotices, PartialNotice } from './utils/graphql'
 import { Application__factory, Outputs__factory } from "@cartesi/rollups";
 import { getClient, INodeComponentProps } from "./utils/chain";
@@ -33,7 +33,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
     }, [props,reload]);
 
-    
+
     if (fetching) return <p>Loading...</p>;
     if (error) return <p>Oh no... {error}</p>;
 
@@ -51,7 +51,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
         } else {
             inputPayload = "(empty)";
         }
-        let payload_data = n?.payload;
+        const payload_data = n?.payload;
         let payload: string;
         if (payload_data) {
             const { args } = decodeFunctionData({
@@ -59,7 +59,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 data: payload_data as `0x${string}`
             })
             payload = args[0];
-            let decoder = new TextDecoder("utf8", { fatal: true });
+            const decoder = new TextDecoder("utf8", { fatal: true });
             try {
                 payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
             } catch (e) {
