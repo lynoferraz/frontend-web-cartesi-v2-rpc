@@ -23,7 +23,7 @@ With this project you can test some interactions with the Cartesi Rollups projec
 13. Validating Notices
 14. Executing Vouchers
 
-## Configurtion
+## Configuration
 
 Edit src/config.json to set the testnet parameters and deployment, inspect, graphql, rpc addresses.
 
