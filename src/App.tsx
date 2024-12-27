@@ -8,6 +8,7 @@ import { Portals } from "./Portals";
 import { Reports } from "./Reports";
 import { Notices } from "./Notices";
 import { Vouchers } from "./Vouchers";
+import { DelegateCallVouchers } from "./DelegatedCallVouchers";
 
 const App: FC = () => {
     const [appAddress, setAppAddress] = useState<`0x${string}`|undefined>("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
@@ -17,7 +18,7 @@ const App: FC = () => {
     const connect = (chain:string|undefined,_:string|undefined) => {
       setChainId(chain)
     }
-    
+
     return (
         <div>
             <Network onChange={connect}/>
@@ -43,6 +44,8 @@ const App: FC = () => {
                     <Notices chain={chainId} appAddress={appAddress} />
                     <h2>Vouchers</h2>
                     <Vouchers chain={chainId} appAddress={appAddress} />
+                    <h2>Delegate Call Voucher</h2>
+                    <DelegateCallVouchers chain={chainId} appAddress={appAddress} />
                 </> : <></> }
             </> : <></>
             }
