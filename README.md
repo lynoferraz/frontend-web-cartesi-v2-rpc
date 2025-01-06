@@ -1,6 +1,6 @@
 # Cartesi frontend web
 
-```
+```bash
 Cartesi Rollups Node version: 2.0.x
 ```
 
@@ -26,6 +26,7 @@ With this project you can test some interactions with the Cartesi Rollups projec
 ## Configuration
 
 Edit src/config.json to set the testnet parameters and deployment, inspect, graphql, rpc addresses.
+You can update contracts with wagmi too.
 
 ## Available Scripts
 
@@ -51,8 +52,7 @@ To execute Vouchers, the voucher epoch must be finalized so the rollups framewor
 As a reminder, you can advance time in hardhat with the command:
 
 ```shell
-curl -H "Content-Type: application/json" http://localhost:8545 -d '{"id":1337,"jsonrpc":"2.0","method":"anvil_mine","params":[7200]}' 
+curl -H "Content-Type: application/json" http://localhost:8545 -d '{"id":1337,"jsonrpc":"2.0","method":"anvil_mine","params":[7200]}'
 ```
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/Calindra/frontend-web-cartesi)
-

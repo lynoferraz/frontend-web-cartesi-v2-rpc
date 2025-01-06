@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { decodeAbiParameters, decodeFunctionData, parseAbiParameters, size, slice } from 'viem'
+import { BaseError, decodeAbiParameters, decodeFunctionData, parseAbiParameters, size, slice } from 'viem'
 import { getGraphqlUrl, getDelegatedCallVoucher, getDelegatedCallVouchers, PartialDelegatedCallVoucher } from './utils/graphql'
 import { Outputs__factory, Application__factory } from "@cartesi/rollups";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
@@ -39,7 +39,7 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
     if (fetching) return <p>Loading...</p>;
     if (error) return <p>Oh no... {error}</p>;
 
-    if (!dCVouchersData) return <p>No vouchers</p>;
+    if (!dCVouchersData) return <p>No delegated vouchers</p>;
 
     const dcVouchers = dCVouchersData.map<ExtendedDCVoucher>((node) => {
         const n = node;
@@ -200,9 +200,13 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
                 setDCVoucherToExecuteMsg("Voucher executed!");
                 voucher.executed = true;
                 setDCVoucherToExecute(voucher);
-            } catch (e: any) {
+            } catch (e) {
                 console.error(e);
-                setDCVoucherToExecuteMsg(e?.cause?.shortMessage);
+                if (e instanceof BaseError) {
+                    setDCVoucherToExecuteMsg(e.shortMessage);
+                    // setDCVoucherToExecuteMsg(e?.cause?.shortMessage);
+                }
+
             }
         }
 

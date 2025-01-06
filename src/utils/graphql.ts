@@ -25,6 +25,7 @@ import {
 
 import configFile from "../config.json";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const config: any = configFile;
 
 

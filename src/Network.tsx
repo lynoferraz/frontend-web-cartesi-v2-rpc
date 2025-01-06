@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FC, useState } from "react";
 import 'viem/window'
 
@@ -6,15 +7,15 @@ import configFile from "./config.json";
 const config: any = configFile;
 
 interface Propos {
-    onChange(chain:string|undefined,address:string|undefined):void 
+    onChange(chain:string|undefined,address:string|undefined):void
 }
 
-export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,address:string|undefined):void}) => {
+export const Network: FC<Propos> = ({onChange}) => {
 
     const [chain, setChain] = useState<string|undefined>("0x7a69");
     const [connectedChain, setConnectedChain] = useState<string|undefined>();
     const [walletAddress, setWalletAddress] = useState<string>();
-    
+
     const accountsChanged = (accounts:string[]) => {
         if (accounts.length === 0) {
             // MetaMask is locked or the user has not connected any accounts.
@@ -54,7 +55,7 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
     async function connect() {
         if (!chain) return;
         try {
-            
+
             if (!window.ethereum) {
                 alert("no provider");
                 return;
@@ -97,7 +98,7 @@ export const Network: FC<Propos> = ({onChange}:{onChange(chain:string|undefined,
                 }
                 value={chain}
                 >
-                {Object.entries(config.chains).map(([k, v]: [string, any], _) => {
+                {Object.entries(config.chains).map(([k, v]: [string, any]) => {
                     return (
                         <option key={k} value={k}>
                             {v.label}

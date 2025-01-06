@@ -9,14 +9,22 @@ import { Reports } from "./Reports";
 import { Notices } from "./Notices";
 import { Vouchers } from "./Vouchers";
 import { DelegateCallVouchers } from "./DelegatedCallVouchers";
+import type { Hex } from "viem";
+
+type NetworkProp = typeof Network extends FC<infer P> ? P : never;
 
 const App: FC = () => {
-    const [appAddress, setAppAddress] = useState<`0x${string}`|undefined>("0xab7528bb862fb57e8a2bcd567a2e929a0be56a5e");
+    const [appAddress, setAppAddress] = useState<Hex|undefined>("0x75135d8ADb7180640d29d822D9AD59E83E8695b2");
 
     const [chainId, setChainId] = useState<string>();
 
-    const connect = (chain:string|undefined,_:string|undefined) => {
+    const connect: NetworkProp["onChange"] = (chain
+    ) => {
       setChainId(chain)
+    }
+
+    const handleAddres = (value: string) => {
+        setAppAddress(value as Hex)
     }
 
     return (
@@ -27,7 +35,9 @@ const App: FC = () => {
                     Dapp Address: <input
                         type="text"
                         value={appAddress}
-                        onChange={(e) => setAppAddress(e.target.value as `0x${string}`)}
+                        onChange={(e) => {
+                            handleAddres(e.target.value)
+                        }}
                     />
                     <br /><br />
                 </div>
