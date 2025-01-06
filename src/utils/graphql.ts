@@ -21,6 +21,7 @@ import {
   NoticeDocument,
   DelegateCallVoucherDocument,
   type DelegateCallVouchersQuery,
+  DelegateCallVouchersDocument,
 } from "../generated/graphql";
 
 import configFile from "../config.json";
@@ -156,7 +157,7 @@ export const getVoucher = async (
 export const getDelegatedCallVouchers = async(
     url: string
 ): Promise<PartialDelegatedCallVoucher[]> => {
-    const data = await request<DelegateCallVouchersQuery>(url, DelegateCallVoucherDocument);
+    const data = await request<DelegateCallVouchersQuery>(url, DelegateCallVouchersDocument);
     if (data?.delegateCallVouchers?.edges) {
         return data.delegateCallVouchers.edges
             .filter(isPartialDelegateCallVoucherEdge)
