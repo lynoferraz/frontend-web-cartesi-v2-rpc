@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BaseError, decodeAbiParameters, decodeFunctionData, parseAbiParameters, size, slice } from 'viem'
+import { BaseError, decodeAbiParameters, decodeFunctionData, parseAbiParameters, size, slice, type Hex } from 'viem'
 import { getGraphqlUrl, getDelegatedCallVoucher, getDelegatedCallVouchers, PartialDelegatedCallVoucher } from './utils/graphql'
 import { Outputs__factory, Application__factory } from "@cartesi/rollups";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
@@ -138,7 +138,7 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
         };
     }).sort((b, a) => b.index - a.index);
 
-    const loadVoucher = async (outputIndex: number) => {
+    const loadDCVoucher = async (outputIndex: number) => {
         const url = getGraphqlUrl(props.chain,props.appAddress);
         if (!url) {
             return;
@@ -182,15 +182,15 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
             const [address] = await walletClient.requestAddresses();
             if (!address) return;
             try {
-
                 const outputIndex = voucher.proof.outputIndex;
-                const outputHashesSiblings: `0x${string}`[] = voucher.proof.outputHashesSiblings as `0x${string}`[] ;
+                const outputHashesSiblings = voucher.proof.outputHashesSiblings as Hex[];
+                const payload = voucher.payload as Hex;
                 const { request } = await client.simulateContract({
                     account: address,
                     address: props.appAddress,
                     abi: Application__factory.abi,
                     functionName: 'executeOutput',
-                    args: [voucher.payload as `0x${string}`,{outputIndex,outputHashesSiblings}]
+                    args: [payload,{outputIndex,outputHashesSiblings}]
                 });
                 const txHash = await walletClient.writeContract(request);
 
@@ -204,9 +204,7 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
                 console.error(e);
                 if (e instanceof BaseError) {
                     setDCVoucherToExecuteMsg(e.shortMessage);
-                    // setDCVoucherToExecuteMsg(e?.cause?.shortMessage);
                 }
-
             }
         }
 
@@ -265,7 +263,7 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
                             <td>{n.index}</td>
                             <td>{n.destination}</td>
                             <td>
-                                <button onClick={() => loadVoucher(n.index)}>Get Proof</button>
+                                <button onClick={() => loadDCVoucher(n.index)}>Get Proof</button>
                             </td>
                             <td>{n.payload}</td>
                         </tr>

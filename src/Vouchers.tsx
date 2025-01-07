@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, size, slice } from 'viem'
+import { BaseError, decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, size, slice, type Hex } from 'viem'
 import { getGraphqlUrl, getVoucher, getVouchers, PartialVoucher } from './utils/graphql'
 import { Outputs__factory, Application__factory } from "@cartesi/rollups";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
@@ -57,76 +57,76 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                 abi: Outputs__factory.abi,
                 data: payload as `0x${string}`
             })
-            const selector = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,0,4) : ""; 
+            const selector = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,0,4) : "";
             const data = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
 
-            switch(selector.toLowerCase()) { 
-                case '0xa9059cbb': { 
-                    // erc20 transfer; 
+            switch(selector.toLowerCase()) {
+                case '0xa9059cbb': {
+                    // erc20 transfer;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address receiver, uint256 amount'),
                         data
                     );
                     payload = `Erc20 Transfer - Amount: ${decode[1]} - Address: ${decode[0]}`;
-                    break; 
+                    break;
                 }
-                case '0x42842e0e': { 
+                case '0x42842e0e': {
                     //erc721 safe transfer;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address sender, address receiver, uint256 id'),
                         data
                     );
                     payload = `Erc721 Transfer - Id: ${decode[2]} - Address: ${decode[1]}`;
-                    break; 
+                    break;
                 }
-                case '0xf242432a': { 
+                case '0xf242432a': {
                     //erc155 single safe transfer;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address sender, address receiver, uint256 id, uint256 amount'),
                         data
                     );
                     payload = `Erc1155 Single Transfer - Id: ${decode[2]} Amount: ${decode[3]} - Address: ${decode[1]}`;
-                    break; 
+                    break;
                 }
-                case '0x2eb2c2d6': { 
+                case '0x2eb2c2d6': {
                     //erc155 Batch safe transfer;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address sender, address receiver, uint256[] ids, uint256[] amounts'),
                         data
                     );
                     payload = `Erc1155 Batch Transfer - Ids: ${decode[2]} Amounts: ${decode[3]} - Address: ${decode[1]}`;
-                    break; 
+                    break;
                 }
-                case '0xd0def521': { 
+                case '0xd0def521': {
                     //erc721 mint;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address receiver, string url'),
                         data
                     );
                     payload = `Mint Erc721 - String: ${decode[1]} - Address: ${decode[0]}`;
-                    break; 
+                    break;
                 }
-                case '0x755edd17': { 
+                case '0x755edd17': {
                     //erc721 mintTo;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address receiver'),
                         data
                     );
                     payload = `Mint Erc721 - Address: ${decode[0]}`;
-                    break; 
+                    break;
                 }
-                case '0x6a627842': { 
+                case '0x6a627842': {
                     //erc721 mint;
                     const decode = decodeAbiParameters(
                         parseAbiParameters('address receiver'),
                         data
                     );
                     payload = `Mint Erc721 - Address: ${decode[0]}`;
-                    break; 
+                    break;
                 }
                 default: {
                     payload = args[2] + " (hex)";
-                    break; 
+                    break;
                 }
             }
         } else {
@@ -135,13 +135,11 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
         return {
             index: n.index,
             payload: `${payload}`,
-            destination: `${n?.destination ?? ""}`, 
+            destination: `${n?.destination ?? ""}`,
             value: n.value,
             input: (n && n.input?.id) ? {id:n.input.id,payload: inputPayload} : undefined,
         };
-    }).sort((b: any, a: any) => {
-        return b.index - a.index;
-    });
+    }).sort((b, a) => b.index - a.index);
 
     const loadVoucher = async (outputIndex: number) => {
         const url = getGraphqlUrl(props.chain,props.appAddress);
@@ -187,27 +185,28 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             const [address] = await walletClient.requestAddresses();
             if (!address) return;
             try {
-
                 const outputIndex = voucher.proof.outputIndex;
-                const outputHashesSiblings: `0x${string}`[] = voucher.proof.outputHashesSiblings as `0x${string}`[] ;
+                const outputHashesSiblings = voucher.proof.outputHashesSiblings as Hex[];
                 const { request } = await client.simulateContract({
                     account: address,
                     address: props.appAddress,
                     abi: Application__factory.abi,
                     functionName: 'executeOutput',
-                    args: [voucher.payload as `0x${string}`,{outputIndex,outputHashesSiblings}]
+                    args: [voucher.payload as Hex,{outputIndex,outputHashesSiblings}]
                 });
                 const txHash = await walletClient.writeContract(request);
-            
-                await client.waitForTransactionReceipt( 
+
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
                 setVoucherToExecuteMsg("Voucher executed!");
                 voucher.executed = true;
                 setVoucherToExecute(voucher);
-            } catch (e: any) {
+            } catch (e) {
                 console.log(e);
-                setVoucherToExecuteMsg(e?.cause?.shortMessage);
+                if (e instanceof BaseError) {
+                    setVoucherToExecuteMsg(e.shortMessage);
+                }
             }
         }
 
@@ -262,9 +261,9 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                             <td colSpan={4}>no vouchers</td>
                         </tr>
                     )}
-                    {vouchers.map((n: any) => (
-                        <tr key={`${n.input.id}-${n.index}`}>
-                            <td>{n.input.id}</td>
+                    {vouchers.map((n) => (
+                        <tr key={`${n.input?.id}-${n.index}`}>
+                            <td>{n.input?.id}</td>
                             <td>{n.index}</td>
                             <td>{n.destination}</td>
                             <td>{formatEther(fromHex(n.value,'bigint'))}</td>
