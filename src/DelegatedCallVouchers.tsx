@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { BaseError, decodeAbiParameters, decodeFunctionData, parseAbiParameters, size, slice, type Hex } from 'viem'
+import { BaseError, decodeAbiParameters, decodeFunctionData, isHex, parseAbiParameters, size, slice, type Hex } from 'viem'
 import { getGraphqlUrl, getDelegatedCallVoucher, getDelegatedCallVouchers, PartialDelegatedCallVoucher } from './utils/graphql'
-import { Outputs__factory, Application__factory } from "@cartesi/rollups";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
+import { applicationFactoryAbi, outputsAbi } from "./generated/rollups";
 
 type ExtendedDCVoucher = PartialDelegatedCallVoucher & {
     executed?: boolean;
@@ -50,10 +50,10 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
             inputPayload = "(empty)";
         }
         let payload = n?.payload;
-        if (payload) {
+        if (isHex(payload)) {
             const { args } = decodeFunctionData({
-                abi: Outputs__factory.abi,
-                data: payload as `0x${string}`
+                abi: outputsAbi,
+                data: payload
             })
             const selector = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,0,4) : "";
             const data = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
@@ -150,7 +150,7 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
             if (client) {
                 const executed = await client.readContract({
                     address: props.appAddress,
-                    abi: Application__factory.abi,
+                    abi: applicationFactoryAbi,
                     functionName: 'wasOutputExecuted',
                     args: [BigInt(delegatedCallVoucher.index)]
                 });
@@ -188,7 +188,7 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
                 const { request } = await client.simulateContract({
                     account: address,
                     address: props.appAddress,
-                    abi: Application__factory.abi,
+                    abi: applicationFactoryAbi,
                     functionName: 'executeOutput',
                     args: [payload,{outputIndex,outputHashesSiblings}]
                 });
@@ -246,7 +246,6 @@ export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INode
                         <th>Input Id</th>
                         <th>Output Index</th>
                         <th>Destination</th>
-                        <th>Value</th>
                         <th>Action</th>
                         <th>Payload</th>
                     </tr>

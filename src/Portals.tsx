@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 import { erc20Abi, erc721Abi, parseEther, parseUnits, toHex } from "viem";
-import { erc20PortalAddress, erc721PortalAddress, erc1155SinglePortalAddress, erc1155BatchPortalAddress, etherPortalAddress } from "./generated/rollups"
-
-import { ERC1155BatchPortal__factory, ERC1155SinglePortal__factory, ERC20Portal__factory,
-    ERC721Portal__factory, EtherPortal__factory, IERC1155__factory } from "@cartesi/rollups";
-
+import { erc20PortalAddress, erc20PortalAbi, erc721PortalAddress, erc721PortalAbi, erc1155SinglePortalAddress, erc1155BatchPortalAddress, etherPortalAddress, etherPortalAbi, ierc1155Abi, erc1155SinglePortalAbi, erc1155BatchPortalAbi } from "./generated/rollups"
 
 export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [chainId, setChainId] = useState<string>();
@@ -49,7 +45,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: etherPortalAddress,
-                    abi: EtherPortal__factory.abi,
+                    abi: etherPortalAbi,
                     functionName: "depositEther",
                     args: [props.appAddress, data],
                     value: value
@@ -107,7 +103,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC20Portal__factory.abi,
+                    abi: erc20PortalAbi,
                     functionName: "depositERC20Tokens",
                     args: [token, props.appAddress, value, data]
                 });
@@ -163,7 +159,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC721Portal__factory.abi,
+                    abi: erc721PortalAbi,
                     functionName: "depositERC721Token",
                     args: [token, props.appAddress, nftid, baseData, data]
                 });
@@ -194,7 +190,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const currentApproval = await client.readContract({
                     address: token,
-                    abi: IERC1155__factory.abi,
+                    abi: ierc1155Abi,
                     functionName: "isApprovedForAll",
                     args: [address,portalAddress]
                 });
@@ -203,7 +199,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                     const { request } = await client.simulateContract({
                         account: address,
                         address: token,
-                        abi: IERC1155__factory.abi,
+                        abi: ierc1155Abi,
                         functionName: "setApprovalForAll",
                         args: [portalAddress,true]
                     });
@@ -220,7 +216,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC1155SinglePortal__factory.abi,
+                    abi: erc1155SinglePortalAbi,
                     functionName: "depositSingleERC1155Token",
                     args: [token, props.appAddress, id, amount, baseData, data]
                 });
@@ -251,7 +247,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const currentApproval = await client.readContract({
                     address: token,
-                    abi: IERC1155__factory.abi,
+                    abi: ierc1155Abi,
                     functionName: "isApprovedForAll",
                     args: [address,portalAddress]
                 });
@@ -260,7 +256,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                     const { request } = await client.simulateContract({
                         account: address,
                         address: token,
-                        abi: IERC1155__factory.abi,
+                        abi: ierc1155Abi,
                         functionName: "setApprovalForAll",
                         args: [portalAddress,true]
                     });
@@ -276,7 +272,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC1155BatchPortal__factory.abi,
+                    abi: erc1155BatchPortalAbi,
                     functionName: "depositBatchERC1155Token",
                     args: [token, props.appAddress, ids, amounts, baseData, data]
                 });

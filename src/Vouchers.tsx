@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { BaseError, decodeAbiParameters, decodeFunctionData, formatEther, fromHex, parseAbiParameters, size, slice, type Hex } from 'viem'
+import { BaseError, decodeAbiParameters, decodeFunctionData, formatEther, fromHex, isHex, parseAbiParameters, size, slice, type Hex } from 'viem'
 import { getGraphqlUrl, getVoucher, getVouchers, PartialVoucher } from './utils/graphql'
-import { Outputs__factory, Application__factory } from "@cartesi/rollups";
+import { applicationFactoryAbi, outputsAbi } from "./generated/rollups";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 
 
@@ -52,10 +52,10 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             inputPayload = "(empty)";
         }
         let payload = n?.payload;
-        if (payload) {
+        if (isHex(payload)) {
             const { args } = decodeFunctionData({
-                abi: Outputs__factory.abi,
-                data: payload as `0x${string}`
+                abi: outputsAbi,
+                data: payload
             })
             const selector = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,0,4) : "";
             const data = args[2] && size(args[2]) > 4 ? slice(args[2] as `0x${string}`,4,payload.length) : "0x";
@@ -153,7 +153,7 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             if (client) {
                 const executed = await client.readContract({
                     address: props.appAddress,
-                    abi: Application__factory.abi,
+                    abi: applicationFactoryAbi,
                     functionName: 'wasOutputExecuted',
                     args: [BigInt(voucher.index)]
                 });
@@ -190,7 +190,7 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                 const { request } = await client.simulateContract({
                     account: address,
                     address: props.appAddress,
-                    abi: Application__factory.abi,
+                    abi: applicationFactoryAbi,
                     functionName: 'executeOutput',
                     args: [voucher.payload as Hex,{outputIndex,outputHashesSiblings}]
                 });
