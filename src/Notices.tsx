@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { decodeFunctionData, fromHex } from 'viem'
+import { BaseError, decodeFunctionData, fromHex, isHex } from 'viem'
 import { getGraphqlUrl, getNotice, getNotices, PartialNotice } from './utils/graphql'
-import { Application__factory, Outputs__factory } from "@cartesi/rollups";
 import { getClient, INodeComponentProps } from "./utils/chain";
+import { applicationFactoryAbi, outputsAbi } from "./generated/rollups";
 
 
 export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
@@ -46,6 +46,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
             try {
                 inputPayload = fromHex(inputPayload as `0x${string}`, 'string');
             } catch (e) {
+                console.warn(e);
                 inputPayload = inputPayload + " (hex)";
             }
         } else {
@@ -53,16 +54,18 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
         }
         const payload_data = n?.payload;
         let payload: string;
-        if (payload_data) {
+        if (isHex(payload_data)) {
             const { args } = decodeFunctionData({
-                abi: Outputs__factory.abi,
-                data: payload_data as `0x${string}`
+                abi: outputsAbi,
+                data: payload_data
             })
             payload = args[0];
             const decoder = new TextDecoder("utf8", { fatal: true });
             try {
-                payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
+                if(!isHex(payload)) throw new Error("not hex");
+                payload = decoder.decode(fromHex(payload, 'bytes'));
             } catch (e) {
+                console.warn(e);
                 payload = payload + " (hex)";
             }
         } else {
@@ -73,7 +76,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
             payload: `${payload}`,
             input: (n && n.input?.id) ? {id:n.input.id,payload: inputPayload} : undefined,
         };
-    }).sort((b: any, a: any) => {
+    }).sort((b, a) => {
         return b.index - a.index;
     });
 
@@ -109,14 +112,16 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const outputHashesSiblings: `0x${string}`[] = notice.proof.outputHashesSiblings as `0x${string}`[] ;
                 await client.readContract({
                     address: props.appAddress,
-                    abi: Application__factory.abi,
+                    abi: applicationFactoryAbi,
                     functionName: 'validateOutput',
                     args: [notice.payload as `0x${string}`,{outputIndex,outputHashesSiblings}]
                 });
                 setValidateNoticeMsg("Notice is Valid!");
-            } catch (e: any) {
-                console.log(e);
-                setValidateNoticeMsg(e?.cause?.data?.errorName ? e?.cause?.data?.errorName : e?.cause?.shortMessage);
+            } catch (e) {
+                console.error(e);
+                if (e instanceof BaseError) {
+                    setValidateNoticeMsg(e.walk().message);
+                }
             }
         }
 
@@ -167,9 +172,9 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
                             <td colSpan={4}>no notices</td>
                         </tr>
                     )}
-                    {notices.map((n: any) => (
-                        <tr key={`${n.input.id}-${n.index}`}>
-                            <td>{n.input.id}</td>
+                    {notices.map((n) => (
+                        <tr key={`${n.input?.id}-${n.index}`}>
+                            <td>{n.input?.id}</td>
                             <td>{n.index}</td>
                             {/* <td>{n.input.payload}</td> */}
                             <td>
