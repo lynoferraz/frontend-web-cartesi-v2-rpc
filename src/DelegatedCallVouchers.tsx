@@ -1,22 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { BaseError, decodeAbiParameters, decodeFunctionData, formatEther, fromHex, isHex, parseAbiParameters, size, slice, type Hex } from 'viem'
-import { getGraphqlUrl, getVoucher, getVouchers, PartialVoucher } from './utils/graphql'
-import { applicationFactoryAbi, outputsAbi } from "./generated/rollups";
+import { BaseError, decodeAbiParameters, decodeFunctionData, isHex, parseAbiParameters, size, slice, type Hex } from 'viem'
+import { getGraphqlUrl, getDelegatedCallVoucher, getDelegatedCallVouchers, PartialDelegatedCallVoucher } from './utils/graphql'
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
+import { applicationFactoryAbi, outputsAbi } from "./generated/rollups";
 
-
-type ExtendedVoucher = PartialVoucher & {
+type ExtendedDCVoucher = PartialDelegatedCallVoucher & {
     executed?: boolean;
 };
 
-
-export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
+export const DelegateCallVouchers: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [fetching, setFetching] = useState<boolean>(false);
     const [error, setError] = useState<string>();
     const [reload, setReload] = useState<number>(0);
-    const [vouchersData, setVouchersData] = useState<PartialVoucher[]>([]);
-    const [voucherToExecute, setVoucherToExecute] = useState<ExtendedVoucher>();
-    const [voucherToExecuteMsg, setVoucherToExecuteMsg] = useState<string>();
+    const [dCVouchersData, setDCVouchersData] = useState<PartialDelegatedCallVoucher[]>([]);
+    const [dCVoucherToExecute, setDCVoucherToExecute] = useState<ExtendedDCVoucher>();
+    const [dCVoucherToExecuteMsg, setDCVoucherToExecuteMsg] = useState<string>();
 
     useEffect(() => {
         if (!props.chain) {
@@ -29,10 +27,10 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             return;
         }
         setFetching(true);
-        setVoucherToExecute(undefined);
-        setVoucherToExecuteMsg(undefined);
-        getVouchers(url).then(n => {
-            setVouchersData(n);
+        setDCVoucherToExecute(undefined);
+        setDCVoucherToExecuteMsg(undefined);
+        getDelegatedCallVouchers(url).then(n => {
+            setDCVouchersData(n);
             setFetching(false);
         });
 
@@ -41,9 +39,9 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
     if (fetching) return <p>Loading...</p>;
     if (error) return <p>Oh no... {error}</p>;
 
-    if (!vouchersData) return <p>No vouchers</p>;
+    if (!dCVouchersData) return <p>No delegated vouchers</p>;
 
-    const vouchers: ExtendedVoucher[] = vouchersData.map((node: PartialVoucher) => {
+    const dcVouchers = dCVouchersData.map<ExtendedDCVoucher>((node) => {
         const n = node;
         let inputPayload = n?.input?.payload;
         if (inputPayload) {
@@ -136,46 +134,45 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             index: n.index,
             payload: `${payload}`,
             destination: `${n?.destination ?? ""}`,
-            value: n.value,
             input: (n && n.input?.id) ? {id:n.input.id,payload: inputPayload} : undefined,
         };
     }).sort((b, a) => b.index - a.index);
 
-    const loadVoucher = async (outputIndex: number) => {
+    const loadDCVoucher = async (outputIndex: number) => {
         const url = getGraphqlUrl(props.chain,props.appAddress);
         if (!url) {
             return;
         }
-        const voucher: ExtendedVoucher = await getVoucher(url,outputIndex) as ExtendedVoucher;
+        const delegatedCallVoucher = await getDelegatedCallVoucher(url,outputIndex) as ExtendedDCVoucher;
 
-        if (props.chain && props.appAddress && voucher) {
+        if (props.chain && props.appAddress && delegatedCallVoucher) {
             const client = await getClient(props.chain);
             if (client) {
                 const executed = await client.readContract({
                     address: props.appAddress,
                     abi: applicationFactoryAbi,
                     functionName: 'wasOutputExecuted',
-                    args: [BigInt(voucher.index)]
+                    args: [BigInt(delegatedCallVoucher.index)]
                 });
-                voucher.executed = executed;
+                delegatedCallVoucher.executed = executed;
             }
         }
-        setVoucherToExecuteMsg(undefined);
-        setVoucherToExecute(voucher);
+        setDCVoucherToExecuteMsg(undefined);
+        setDCVoucherToExecute(delegatedCallVoucher);
     };
 
 
     // TODO: execute voucher function
-    const executeVoucher = async (voucher: ExtendedVoucher) => {
+    const executeDCVoucher = async (voucher: ExtendedDCVoucher) => {
         if (!voucher || !voucher.payload) {
-            setVoucherToExecuteMsg("no voucher");
+            setDCVoucherToExecuteMsg("no voucher");
             return
         }
         if (!voucher.proof || !voucher.proof.outputHashesSiblings || voucher.proof.outputHashesSiblings.length == 0) {
-            setVoucherToExecuteMsg("no proof");
+            setDCVoucherToExecuteMsg("no proof");
             return
         }
-        setVoucherToExecuteMsg(undefined);
+        setDCVoucherToExecuteMsg(undefined);
         if (props.chain && props.appAddress && voucher) {
             const client = await getClient(props.chain);
             const walletClient = await getWalletClient(props.chain);
@@ -187,25 +184,26 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
             try {
                 const outputIndex = voucher.proof.outputIndex;
                 const outputHashesSiblings = voucher.proof.outputHashesSiblings as Hex[];
+                const payload = voucher.payload as Hex;
                 const { request } = await client.simulateContract({
                     account: address,
                     address: props.appAddress,
                     abi: applicationFactoryAbi,
                     functionName: 'executeOutput',
-                    args: [voucher.payload as Hex,{outputIndex,outputHashesSiblings}]
+                    args: [payload,{outputIndex,outputHashesSiblings}]
                 });
                 const txHash = await walletClient.writeContract(request);
 
                 await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
-                setVoucherToExecuteMsg("Voucher executed!");
+                setDCVoucherToExecuteMsg("Voucher executed!");
                 voucher.executed = true;
-                setVoucherToExecute(voucher);
+                setDCVoucherToExecute(voucher);
             } catch (e) {
-                console.log(e);
+                console.error(e);
                 if (e instanceof BaseError) {
-                    setVoucherToExecuteMsg(e.shortMessage);
+                    setDCVoucherToExecuteMsg(e.shortMessage);
                 }
             }
         }
@@ -215,29 +213,27 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
     return (
         <div>
             <p>Voucher to execute</p>
-        {voucherToExecute ? <table>
+        {dCVoucherToExecute ? <table>
             <thead>
                 <tr>
                     <th>Input Id</th>
                     <th>Voucher Output Index</th>
                     <th>Destination</th>
-                    <th>Value</th>
                     <th>Action</th>
                     {/* <th>Payload</th> */}
                     <th>Msg</th>
                 </tr>
             </thead>
             <tbody>
-                <tr key={`${voucherToExecute.input?.id}-${voucherToExecute.index}`}>
-                    <td>{voucherToExecute.input?.id}</td>
-                    <td>{voucherToExecute.index}</td>
-                    <td>{voucherToExecute.destination}</td>
-                    <td>{formatEther(fromHex(voucherToExecute.value,'bigint'))}</td>
+                <tr key={`${dCVoucherToExecute.input?.id}-${dCVoucherToExecute.index}`}>
+                    <td>{dCVoucherToExecute.input?.id}</td>
+                    <td>{dCVoucherToExecute.index}</td>
+                    <td>{dCVoucherToExecute.destination}</td>
                     <td>
-                        <button disabled={!voucherToExecute.proof || voucherToExecute.executed} onClick={() => executeVoucher(voucherToExecute)}>{voucherToExecute.proof ? (voucherToExecute.executed ? "Voucher executed" : "Execute voucher") : "No proof yet"}</button>
+                        <button disabled={!dCVoucherToExecute.proof || dCVoucherToExecute.executed} onClick={() => executeDCVoucher(dCVoucherToExecute)}>{dCVoucherToExecute.proof ? (dCVoucherToExecute.executed ? "Voucher executed" : "Execute voucher") : "No proof yet"}</button>
                     </td>
                     {/* <td>{voucherToExecute.payload}</td> */}
-                    <td>{voucherToExecuteMsg}</td>
+                    <td>{dCVoucherToExecuteMsg}</td>
                 </tr>
             </tbody>
         </table> : <p>Nothing yet</p>}
@@ -250,25 +246,23 @@ export const Vouchers: React.FC<INodeComponentProps> = (props: INodeComponentPro
                         <th>Input Id</th>
                         <th>Output Index</th>
                         <th>Destination</th>
-                        <th>Value</th>
                         <th>Action</th>
                         <th>Payload</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {vouchers.length === 0 && (
+                    {dcVouchers.length === 0 && (
                         <tr>
                             <td colSpan={4}>no vouchers</td>
                         </tr>
                     )}
-                    {vouchers.map((n) => (
+                    {dcVouchers.map((n) => (
                         <tr key={`${n.input?.id}-${n.index}`}>
                             <td>{n.input?.id}</td>
                             <td>{n.index}</td>
                             <td>{n.destination}</td>
-                            <td>{formatEther(fromHex(n.value,'bigint'))}</td>
                             <td>
-                                <button onClick={() => loadVoucher(n.index)}>Get Proof</button>
+                                <button onClick={() => loadDCVoucher(n.index)}>Get Proof</button>
                             </td>
                             <td>{n.payload}</td>
                         </tr>

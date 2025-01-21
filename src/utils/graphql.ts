@@ -2,25 +2,31 @@
 import request from "graphql-request";
 
 import {
-    NoticesDocument,
-    Notice,
-    Input,
-    NoticesQuery,
-    ReportsDocument,
-    Report,
-    ReportsQuery,
-    VouchersDocument,
-    Voucher,
-    VoucherDocument,
-    VouchersQuery,
-    VoucherQuery,
-    Proof,
-    NoticeQuery,
-    NoticeDocument,
+  NoticesDocument,
+  Notice,
+  Input,
+  NoticesQuery,
+  ReportsDocument,
+  Report,
+  ReportsQuery,
+  VouchersDocument,
+  Voucher,
+  VoucherDocument,
+  VouchersQuery,
+  VoucherQuery,
+  DelegateCallVoucher,
+  DelegateCallVoucherQuery,
+  Proof,
+  NoticeQuery,
+  NoticeDocument,
+  DelegateCallVoucherDocument,
+  type DelegateCallVouchersQuery,
+  DelegateCallVouchersDocument,
 } from "../generated/graphql";
 
 import configFile from "../config.json";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const config: any = configFile;
 
 
@@ -102,7 +108,19 @@ export const getNotice = async (
 };
 
 
-
+export type PartialDelegatedCallVoucher = Pick<
+  DelegateCallVoucher,
+  "__typename" | "index" | "destination" | "payload"
+> & {
+  input?: PartialInput;
+  proof?: PartialProof | null;
+};
+export type PartialDelegatedCallVoucherEdge = {
+  node: PartialDelegatedCallVoucher;
+};
+const isPartialDelegateCallVoucherEdge = (
+  n: PartialDelegatedCallVoucherEdge | null
+): n is PartialDelegatedCallVoucherEdge => n !== null;
 
 
 export type PartialVoucher = Pick<Voucher,"__typename" | "index" | "destination" | "payload" | "value" > & {
@@ -118,7 +136,7 @@ const isPartialVoucherEdge = (n: PartialVoucherEdge | null): n is PartialVoucher
 export const getVouchers = async (
     url: string
 ): Promise<PartialVoucher[]> => {
-    const data:VouchersQuery = await request(url, VouchersDocument);
+    const data = await request<VouchersQuery>(url, VouchersDocument);
     if (data?.vouchers?.edges) {
         return data.vouchers.edges
             .filter(isPartialVoucherEdge)
@@ -136,5 +154,26 @@ export const getVoucher = async (
     return data?.voucher ? data.voucher : undefined;
 };
 
+export const getDelegatedCallVouchers = async(
+    url: string
+): Promise<PartialDelegatedCallVoucher[]> => {
+    const data = await request<DelegateCallVouchersQuery>(url, DelegateCallVouchersDocument);
+    if (data?.delegateCallVouchers?.edges) {
+        return data.delegateCallVouchers.edges
+            .filter(isPartialDelegateCallVoucherEdge)
+            .map((e) => e.node);
+    } else {
+        return [];
+    }
+}
+
+
+export const getDelegatedCallVoucher = async(
+    url: string,
+    outputIndex: number
+): Promise<PartialDelegatedCallVoucher|undefined> => {
+    const data = await request<DelegateCallVoucherQuery>(url, DelegateCallVoucherDocument,{outputIndex});
+    return data?.delegateCallVoucher ? data.delegateCallVoucher : undefined;
+}
 
 

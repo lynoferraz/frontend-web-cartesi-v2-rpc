@@ -32,6 +32,40 @@ query notices {
   }
 }
 
+# DELEGATE CALL VOUCHERS
+query delegateCallVoucher($outputIndex: Int!) {
+  delegateCallVoucher(outputIndex: $outputIndex) {
+    index
+    input {
+      id
+      index
+      payload
+    }
+    destination
+    payload
+    proof {
+      outputIndex
+      outputHashesSiblings
+    }
+  }
+}
+
+query delegateCallVouchers {
+  delegateCallVouchers {
+    edges {
+      node {
+        index
+        input {
+          id
+          index
+          payload
+        }
+        destination
+        payload
+      }
+    }
+  }
+}
 
 # VOUCHERS
 

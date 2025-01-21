@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { InputBox__factory } from "@cartesi/rollups";
 
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
 
 import configFile from "./config.json";
-import { toHex } from "viem";
+import { toHex, type Hex } from "viem";
+import { inputBoxAbi } from "./generated/rollups";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const config: any = configFile;
 
 export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
@@ -39,13 +40,13 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
                 const { request } = await client.simulateContract({
                     account: address,
                     address: config.contracAddresses.InputBox as `0x${string}`,
-                    abi: InputBox__factory.abi,
+                    abi: inputBoxAbi,
                     functionName: 'addInput',
                     args: [props.appAddress, payload]
                 });
                 const txHash = await walletClient.writeContract(request);
-            
-                await client.waitForTransactionReceipt( 
+
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
             } catch (e) {
@@ -54,7 +55,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
         }
     };
 
-    let typedData = {
+    const typedData = {
         domain: {
             name: "Cartesi",
             version: "0.1.0",
@@ -85,7 +86,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
         },
     }
 
-    const fetchNonceL2 = async (user: any, application: any) => {
+    const fetchNonceL2 = async (user: Hex, application: Hex) => {
         const response = await fetch(`${config.chains[props.chain].l2EIP712Url}/nonce`, {
             method: 'POST',
             headers: {
@@ -99,7 +100,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
         return nextNonce
     }
 
-    const submitTransactionL2 = async (fullBody: any) => {
+    const submitTransactionL2 = async (fullBody: unknown) => {
         const body = JSON.stringify(fullBody)
         const response = await fetch(`${config.chains[props.chain].l2EIP712Url}/submit`, {
             method: 'POST',
@@ -171,7 +172,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                 />
-                <input type="checkbox" checked={hexInput} onChange={(_) => setHexInput(!hexInput)} /><span>Raw Hex </span>
+                <input type="checkbox" checked={hexInput} onChange={() => setHexInput(!hexInput)} /><span>Raw Hex </span>
                 <button onClick={() => addInput(input)} disabled={!chainId}>
                     Send
                 </button>
@@ -184,7 +185,7 @@ export const Input: React.FC<INodeComponentProps> = (props: INodeComponentProps)
                     value={l2Data}
                     onChange={(e) => setL2Data(e.target.value)}
                 />
-                <input type="checkbox" checked={hexCartesiInput} onChange={(_) => setHexCartesiInput(!hexCartesiInput)} /><span>Raw Hex </span>
+                <input type="checkbox" checked={hexCartesiInput} onChange={() => setHexCartesiInput(!hexCartesiInput)} /><span>Raw Hex </span>
                 <button onClick={() => addTransactionL2(l2Data)} disabled={!chainId}>
                     Send
                 </button>

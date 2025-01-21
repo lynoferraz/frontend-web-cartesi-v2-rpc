@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
-import { erc20Abi, erc721Abi, parseEther, parseUnits, toHex } from "viem";
-
-import configFile from "./config.json";
-import { ERC1155BatchPortal__factory, ERC1155SinglePortal__factory, ERC20Portal__factory, 
-    ERC721Portal__factory, EtherPortal__factory, IERC1155__factory } from "@cartesi/rollups";
-
-const config: any = configFile;
-
+import { BaseError, erc20Abi, erc721Abi, parseEther, parseUnits, toHex } from "viem";
+import { erc20PortalAddress, erc20PortalAbi, erc721PortalAddress, erc721PortalAbi, erc1155SinglePortalAddress, erc1155BatchPortalAddress, etherPortalAddress, etherPortalAbi, ierc1155Abi, erc1155SinglePortalAbi, erc1155BatchPortalAbi } from "./generated/rollups"
 
 export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
     const [chainId, setChainId] = useState<string>();
@@ -40,9 +34,9 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const client = await getClient(chainId);
                 const walletClient = await getWalletClient(chainId);
-    
+
                 if (!client || !walletClient) return;
-    
+
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
@@ -50,15 +44,15 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const { request } = await client.simulateContract({
                     account: address,
-                    address: config.contracAddresses.EtherPortal as `0x${string}`,
-                    abi: EtherPortal__factory.abi,
+                    address: etherPortalAddress,
+                    abi: etherPortalAbi,
                     functionName: "depositEther",
                     args: [props.appAddress, data],
                     value: value
                 });
                 const txHash = await walletClient.writeContract(request);
 
-                await client.waitForTransactionReceipt( 
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
             }
@@ -73,13 +67,13 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const client = await getClient(chainId);
                 const walletClient = await getWalletClient(chainId);
-    
+
                 if (!client || !walletClient) return;
-    
+
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc20Portal as `0x${string}`;
+                const portalAddress= erc20PortalAddress;
 
                 const currAllowance = await client.readContract({
                     address: token,
@@ -87,9 +81,9 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                     functionName: "allowance",
                     args: [address,portalAddress]
                 });
-            
+
                 if (currAllowance < value) {
-                
+
                     const { request } = await client.simulateContract({
                         account: address,
                         address: token,
@@ -98,8 +92,8 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                         args: [portalAddress,value]
                     });
                     const txHash = await walletClient.writeContract(request);
-                
-                    await client.waitForTransactionReceipt( 
+
+                    await client.waitForTransactionReceipt(
                         { hash: txHash }
                     )
                 }
@@ -109,18 +103,22 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC20Portal__factory.abi,
+                    abi: erc20PortalAbi,
                     functionName: "depositERC20Tokens",
                     args: [token, props.appAddress, value, data]
                 });
                 const txHash = await walletClient.writeContract(request);
 
-                await client.waitForTransactionReceipt( 
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
             }
         } catch (e) {
-            console.log(`${e}`);
+            if (e instanceof BaseError) {
+                console.error(e.message);
+            } else {
+                console.error(e);
+            }
         }
     };
 
@@ -129,13 +127,13 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
             if (chainId) {
                 const client = await getClient(chainId);
                 const walletClient = await getWalletClient(chainId);
-    
+
                 if (!client || !walletClient) return;
-    
+
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc721Portal as `0x${string}`;
+                const portalAddress = erc721PortalAddress;
 
                 const currentApproval = await client.readContract({
                     address: token,
@@ -154,7 +152,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                     });
                     const txHash = await walletClient.writeContract(request);
 
-                    await client.waitForTransactionReceipt( 
+                    await client.waitForTransactionReceipt(
                         { hash: txHash }
                     )
                 }
@@ -165,13 +163,13 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC721Portal__factory.abi,
+                    abi: erc721PortalAbi,
                     functionName: "depositERC721Token",
                     args: [token, props.appAddress, nftid, baseData, data]
                 });
                 const txHash = await walletClient.writeContract(request);
 
-                await client.waitForTransactionReceipt( 
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
             }
@@ -186,17 +184,17 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const client = await getClient(chainId);
                 const walletClient = await getWalletClient(chainId);
-    
+
                 if (!client || !walletClient) return;
-    
+
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc1155SinglePortal as `0x${string}`;
+                const portalAddress = erc1155SinglePortalAddress;
 
                 const currentApproval = await client.readContract({
                     address: token,
-                    abi: IERC1155__factory.abi,
+                    abi: ierc1155Abi,
                     functionName: "isApprovedForAll",
                     args: [address,portalAddress]
                 });
@@ -205,30 +203,30 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                     const { request } = await client.simulateContract({
                         account: address,
                         address: token,
-                        abi: IERC1155__factory.abi,
+                        abi: ierc1155Abi,
                         functionName: "setApprovalForAll",
                         args: [portalAddress,true]
                     });
                     const txHash = await walletClient.writeContract(request);
 
-                    await client.waitForTransactionReceipt( 
+                    await client.waitForTransactionReceipt(
                         { hash: txHash }
                     )
                 }
 
                 const baseData = toHex(`Base Layer Deposited (${amount}) tokens from id (${id}) of ERC1155 (${token}).`);
                 const data = toHex(`Exec Layer Deposited (${amount}) tokens from id (${id}) of ERC1155 (${token}).`);
-                
+
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC1155SinglePortal__factory.abi,
+                    abi: erc1155SinglePortalAbi,
                     functionName: "depositSingleERC1155Token",
                     args: [token, props.appAddress, id, amount, baseData, data]
                 });
                 const txHash = await walletClient.writeContract(request);
 
-                await client.waitForTransactionReceipt( 
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
             }
@@ -243,17 +241,17 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
 
                 const client = await getClient(chainId);
                 const walletClient = await getWalletClient(chainId);
-    
+
                 if (!client || !walletClient) return;
-    
+
                 const [address] = await walletClient.requestAddresses();
                 if (!address) return;
 
-                const portalAddress = config.contracAddresses.Erc1155BatchPortal as `0x${string}`;
+                const portalAddress = erc1155BatchPortalAddress;
 
                 const currentApproval = await client.readContract({
                     address: token,
-                    abi: IERC1155__factory.abi,
+                    abi: ierc1155Abi,
                     functionName: "isApprovedForAll",
                     args: [address,portalAddress]
                 });
@@ -262,13 +260,13 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                     const { request } = await client.simulateContract({
                         account: address,
                         address: token,
-                        abi: IERC1155__factory.abi,
+                        abi: ierc1155Abi,
                         functionName: "setApprovalForAll",
                         args: [portalAddress,true]
                     });
                     const txHash = await walletClient.writeContract(request);
 
-                    await client.waitForTransactionReceipt( 
+                    await client.waitForTransactionReceipt(
                         { hash: txHash }
                     )
                 }
@@ -278,13 +276,13 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 const { request } = await client.simulateContract({
                     account: address,
                     address: portalAddress,
-                    abi: ERC1155BatchPortal__factory.abi,
+                    abi: erc1155BatchPortalAbi,
                     functionName: "depositBatchERC1155Token",
                     args: [token, props.appAddress, ids, amounts, baseData, data]
                 });
                 const txHash = await walletClient.writeContract(request);
 
-                await client.waitForTransactionReceipt( 
+                await client.waitForTransactionReceipt(
                     { hash: txHash }
                 )
             }
@@ -395,7 +393,7 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 <button onClick={() => Clear1155Batch()} disabled={!chainId}>
                     Clear Batch
                 </button>
-                <button onClick={() => transferErc1155BatchToPortal(erc1155 as `0x${string}`, erc1155Ids.map((v,_) => BigInt(v)), erc1155Amounts.map((v,) => BigInt(v)))} disabled={!chainId}>
+                <button onClick={() => transferErc1155BatchToPortal(erc1155 as `0x${string}`, erc1155Ids.map((v) => BigInt(v)), erc1155Amounts.map((v,) => BigInt(v)))} disabled={!chainId}>
                     Transfer Batch 1155
                 </button>
             </div>

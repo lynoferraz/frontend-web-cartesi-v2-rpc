@@ -48,7 +48,7 @@ export const Reports: React.FC<INodeComponentProps> = (props: INodeComponentProp
         }
         let payload = n?.payload;
         if (payload) {
-            let decoder = new TextDecoder("utf8", { fatal: true });
+            const decoder = new TextDecoder("utf8", { fatal: true });
             try {
                 payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
             } catch (e) {

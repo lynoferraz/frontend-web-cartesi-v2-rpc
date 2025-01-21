@@ -1,16 +1,29 @@
 import React, { useState } from "react";
-import { fromHex } from 'viem'
+import { fromHex, type Hex } from 'viem'
 
 import configFile from "./config.json";
 import { INodeComponentProps } from "./utils/chain";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const config: any = configFile;
 
+interface Metadata {
+    metadata: {
+        active_epoch_index: number,
+        current_input_index: number
+    }
+    status: string
+    exception_payload: Hex
+}
 
-export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps) => {
+interface Report {
+    payload: Hex
+}
+
+export const Inspect: React.FC<INodeComponentProps> = (props) => {
     const [inspectData, setInspectData] = useState<string>("");
-    const [reports, setReports] = useState<string[]>([]);
-    const [metadata, setMetadata] = useState<any>({});
+    const [reports, setReports] = useState<Report[]>([]);
+    const [metadata, setMetadata] = useState<Partial<Metadata>>({});
     const [hexData, setHexData] = useState<boolean>(false);
     const [postData, setPostData] = useState<boolean>(false);
 
@@ -23,7 +36,7 @@ export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps
         if (!props.chain){
             return;
         }
-        
+
         let apiURL= ""
 
         if(config.chains[props.chain]?.inspectAPIURL) {
@@ -32,7 +45,7 @@ export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps
             console.error(`No inspect interface defined for chain ${props.chain}`);
             return;
         }
-        
+
         let fetchData: Promise<Response>;
         if (postData) {
             const payloadBlob = new TextEncoder().encode(payload);
@@ -55,8 +68,8 @@ export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps
                     value={inspectData}
                     onChange={(e) => setInspectData(e.target.value)}
                 />
-                <input type="checkbox" checked={hexData} onChange={(_) => setHexData(!hexData)}/><span>Raw Hex </span>
-                <input type="checkbox" checked={postData} onChange={(_) => setPostData(!postData)}/><span>POST </span>
+                <input type="checkbox" checked={hexData} onChange={() => setHexData(!hexData)}/><span>Raw Hex </span>
+                <input type="checkbox" checked={postData} onChange={() => setPostData(!postData)}/><span>POST </span>
                 <button onClick={() => inspectCall(inspectData)} disabled={!props.chain}>
                     Send
                 </button>
@@ -88,7 +101,7 @@ export const Inspect: React.FC<INodeComponentProps> = (props:INodeComponentProps
                             <td colSpan={4}>no reports</td>
                         </tr>
                     )}
-                    {reports?.map((n: any) => (
+                    {reports?.map((n) => (
                         <tr key={`${n.payload}`}>
                             <td>{fromHex(n.payload, 'string')}</td>
                         </tr>
