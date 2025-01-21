@@ -45,8 +45,7 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
         if (inputPayload) {
             try {
                 inputPayload = fromHex(inputPayload as `0x${string}`, 'string');
-            } catch (e) {
-                console.warn(e);
+            } catch {
                 inputPayload = inputPayload + " (hex)";
             }
         } else {
@@ -62,10 +61,10 @@ export const Notices: React.FC<INodeComponentProps> = (props: INodeComponentProp
             payload = args[0];
             const decoder = new TextDecoder("utf8", { fatal: true });
             try {
-                if(!isHex(payload)) throw new Error("not hex");
+                if (!isHex(payload)) throw new Error("not hex");
+                console.log("decoding", payload);
                 payload = decoder.decode(fromHex(payload, 'bytes'));
-            } catch (e) {
-                console.warn(e);
+            } catch {
                 payload = payload + " (hex)";
             }
         } else {

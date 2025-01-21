@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getClient, getWalletClient, INodeComponentProps } from "./utils/chain";
-import { erc20Abi, erc721Abi, parseEther, parseUnits, toHex } from "viem";
+import { BaseError, erc20Abi, erc721Abi, parseEther, parseUnits, toHex } from "viem";
 import { erc20PortalAddress, erc20PortalAbi, erc721PortalAddress, erc721PortalAbi, erc1155SinglePortalAddress, erc1155BatchPortalAddress, etherPortalAddress, etherPortalAbi, ierc1155Abi, erc1155SinglePortalAbi, erc1155BatchPortalAbi } from "./generated/rollups"
 
 export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
@@ -114,7 +114,11 @@ export const Portals: React.FC<INodeComponentProps> = (props: INodeComponentProp
                 )
             }
         } catch (e) {
-            console.log(`${e}`);
+            if (e instanceof BaseError) {
+                console.error(e.message);
+            } else {
+                console.error(e);
+            }
         }
     };
 
