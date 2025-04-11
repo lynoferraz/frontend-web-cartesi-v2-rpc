@@ -17,11 +17,9 @@ With this project you can test some interactions with the Cartesi Rollups projec
 7. Depositing ERC721
 8. Depositing ERC1155 Single
 9. Depositing ERC1155 Batch
-10. Listing Notices
-11. Listing Reports
-12. Listing Vouchers
-13. Validating Notices
-14. Executing Vouchers
+10. Listing Outputs
+11. Validating Outputs
+12. Executing Outputs
 
 ## Configuration
 
@@ -33,14 +31,13 @@ You can update contracts with wagmi too.
 In the project directory, run:
 
 ```shell
-yarn
-yarn codegen
+pnpm i
 ```
 
 to build the app.
 
 ```shell
-yarn dev --port 3000
+pnpm dev --port 3000
 ```
 
 Runs the app in the development mode.\
@@ -54,5 +51,3 @@ As a reminder, you can advance time in hardhat with the command:
 ```shell
 curl -H "Content-Type: application/json" http://localhost:8545 -d '{"id":1337,"jsonrpc":"2.0","method":"anvil_mine","params":[7200]}'
 ```
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/Calindra/frontend-web-cartesi)

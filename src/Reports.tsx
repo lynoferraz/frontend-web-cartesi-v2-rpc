@@ -1,101 +1,152 @@
+import React, { useEffect, useRef, useState } from "react";
+import { fromHex, isHex } from "viem";
+import { Report } from "@cartesi/viem";
+import { getL2Client } from "./utils/chain";
+import { INodeComponentProps } from "./utils/models";
 
-import React, { useEffect, useState } from "react";
-import { fromHex } from 'viem'
-import { getGraphqlUrl, getReports, PartialReport } from './utils/graphql'
-import { INodeComponentProps } from "./utils/chain";
+async function getReports(
+  appAddress: string,
+  nodeAddress: string,
+  filter: Record<string, unknown>,
+) {
+  if (!nodeAddress) return [];
+  const client = await getL2Client(nodeAddress + "/rpc");
+  if (!client) return [];
+  const reportResponse = await client.listReports({
+    ...filter,
+    application: appAddress,
+  });
+  return reportResponse.data;
+}
 
+export const Reports: React.FC<INodeComponentProps> = (
+  props: INodeComponentProps,
+) => {
+  const [fetching, setFetching] = useState<boolean>(false);
+  const [error, setError] = useState<string>();
+  const rpcFilter = useRef<Record<string, unknown>>({});
+  const [showFilter, setShowFilter] = useState<boolean>(false);
+  const [reports, setReports] = useState<Report[]>([]);
+  // const [reportToExecute, setReportToExecute] = useState<ExtendedReport>();
 
-export const Reports: React.FC<INodeComponentProps> = (props: INodeComponentProps) => {
-    const [fetching, setFetching] = useState<boolean>(false);
-    const [error, setError] = useState<string>();
-    const [reload, setReload] = useState<number>(0);
-    const [reportsData, setReportsData] = useState<PartialReport[]>([]);
+  useEffect(() => {
+    setFetching(true);
+    getReports(props.appAddress, props.nodeAddress, rpcFilter.current)
+      .then((out) => setReports(out))
+      .finally(() => setFetching(false));
+  }, [props]);
 
-    useEffect(() => {
-        if (!props.chain) {
-            setError("No connected chain");
-            return;
-        }
-        const url = getGraphqlUrl(props.chain,props.appAddress);
-        if (!url) {
-            setError("No chain graphql url");
-            return;
-        }
-        setFetching(true);
-        getReports(url).then(n => {
-            setReportsData(n);
-            setFetching(false);
-        });
-
-    }, [props,reload]);
-
-    if (fetching) return <p>Loading...</p>;
-    if (error) return <p>Oh no... {error}</p>;
-
-    if (!reportsData) return <p>No reports</p>;
-
-    const reports: PartialReport[] = reportsData.map((node: PartialReport) => {
-        const n = node;
-        let inputPayload = n?.input?.payload;
-        if (inputPayload) {
-            try {
-                inputPayload = fromHex(inputPayload as `0x${string}`, 'string');
-            } catch (e) {
-                inputPayload = inputPayload + " (hex)";
-            }
-        } else {
-            inputPayload = "(empty)";
-        }
-        let payload = n?.payload;
-        if (payload) {
-            const decoder = new TextDecoder("utf8", { fatal: true });
-            try {
-                payload = decoder.decode(fromHex(payload as `0x${string}`, 'bytes'));
-            } catch (e) {
-                payload = payload + " (hex)";
-            }
-        } else {
-            payload = "(empty)";
-        }
-        return {
-            index: n.index,
-            payload: `${payload}`,
-            input: (n && n.input?.id) ? {id:n.input.id,payload: inputPayload} : undefined,
-        };
-    }).sort((b: any, a: any) => {
-        return b.index - a.index;
-    });
-
-    // const forceUpdate = useForceUpdate();
-    return (
-        <div>
-            <button onClick={() => setReload(reload+1)}>
-                Reload
-            </button>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Input Id</th>
-                        <th>Report Index</th>
-                        <th>Payload</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {reports.length === 0 && (
-                        <tr>
-                            <td colSpan={4}>no reports</td>
-                        </tr>
-                    )}
-                    {reports.map((n: any) => (
-                        <tr key={`${n.input.id}-${n.index}`}>
-                            <td>{n.input.id}</td>
-                            <td>{n.index}</td>
-                            <td>{n.payload}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
-        </div>
+  async function loadReports() {
+    if (!props.chain) {
+      setError("No connected chain");
+      return;
+    }
+    setFetching(true);
+    const out = await getReports(
+      props.appAddress,
+      props.nodeAddress,
+      rpcFilter.current,
     );
+    setReports(out);
+    setFetching(false);
+  }
+
+  if (fetching) return <p>Loading...</p>;
+  if (error) return <p>Oh no... {error}</p>;
+
+  if (!reports) return <p>No reports</p>;
+
+  function handleFilterChange(key: string, value: unknown) {
+    rpcFilter.current[key] = value;
+  }
+
+  const decoder = new TextDecoder("utf8", { fatal: true });
+
+  return (
+    <div>
+      <button onClick={() => setShowFilter(!showFilter)}>Toggle Filter</button>
+      <div hidden={!showFilter}>
+        Limit:{" "}
+        <input
+          type="number"
+          value={(rpcFilter.current.limit as number) || ""}
+          onChange={(e) => handleFilterChange("limit", e.target.value)}
+        />
+        <br />
+        Offset:{" "}
+        <input
+          type="number"
+          value={(rpcFilter.current.offset as number) || ""}
+          onChange={(e) => handleFilterChange("limit", e.target.value)}
+        />
+        <br />
+        Type:{" "}
+        <input
+          type="text"
+          value={(rpcFilter.current.report_type as string) || ""}
+          onChange={(e) => handleFilterChange("report_type", e.target.value)}
+        />
+        <br />
+        Epoch:{" "}
+        <input
+          type="number"
+          value={(rpcFilter.current.epoch_index as number) || ""}
+          onChange={(e) => handleFilterChange("epoch_index", e.target.value)}
+        />
+        <br />
+        Input:{" "}
+        <input
+          type="text"
+          value={(rpcFilter.current.input_index as number) || ""}
+          onChange={(e) => handleFilterChange("input_index", e.target.value)}
+        />
+        <br />
+        Voucher address:{" "}
+        <input
+          type="text"
+          value={(rpcFilter.current.voucher_address as string) || ""}
+          onChange={(e) =>
+            handleFilterChange("voucher_address", e.target.value)
+          }
+        />
+      </div>
+      <br />
+      <button onClick={() => loadReports()}>Reload</button>
+      <br />
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Input Id</th>
+            <th>Report Index</th>
+            <th>Payload</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reports.length === 0 && (
+            <tr>
+              <td colSpan={4}>no reports</td>
+            </tr>
+          )}
+          {reports.map((n, index) => {
+            let payload: string = n.rawData && n.rawData ? n.rawData : "";
+            try {
+              if (!isHex(payload)) throw new Error("not hex");
+              payload = decoder.decode(fromHex(payload, "bytes"));
+            } catch {
+              payload = payload + " (hex)";
+            }
+            return (
+              <tr key={`${index}`}>
+                <td>{n.updatedAt.toLocaleString()}</td>
+                <td>{n.inputIndex}</td>
+                <td>{n.index}</td>
+                <td>{payload}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 };

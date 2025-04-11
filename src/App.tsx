@@ -6,61 +6,99 @@ import { Inspect } from "./Inspect";
 import { Input } from "./Input";
 import { Portals } from "./Portals";
 import { Reports } from "./Reports";
-import { Notices } from "./Notices";
-import { Vouchers } from "./Vouchers";
-import { DelegateCallVouchers } from "./DelegatedCallVouchers";
 import type { Hex } from "viem";
+import { Outputs } from "./Outputs";
 
 type NetworkProp = typeof Network extends FC<infer P> ? P : never;
 
 const App: FC = () => {
-    const [appAddress, setAppAddress] = useState<Hex|undefined>("0x75135d8ADb7180640d29d822D9AD59E83E8695b2");
+  const [appAddress, setAppAddress] = useState<Hex | undefined>(
+    "0xa966c86F18D463C90DA64940053B411Be671E77E",
+  );
+  const [nodeAddress, setNodeAddress] = useState<string | undefined>(
+    "http://localhost:8080",
+  );
 
-    const [chainId, setChainId] = useState<string>();
+  const [chainId, setChainId] = useState<number>();
 
-    const connect: NetworkProp["onChange"] = (chain
-    ) => {
-      setChainId(chain)
-    }
+  const connect: NetworkProp["onChange"] = (chain) => {
+    setChainId(chain);
+  };
 
-    const handleAddres = (value: string) => {
-        setAppAddress(value as Hex)
-    }
+  const handleAddres = (value: string) => {
+    setAppAddress(value as Hex);
+  };
 
-    return (
-        <div>
-            <Network onChange={connect}/>
-            { chainId ? <>
-                <div>
-                    Dapp Address: <input
-                        type="text"
-                        value={appAddress}
-                        onChange={(e) => {
-                            handleAddres(e.target.value)
-                        }}
-                    />
-                    <br /><br />
-                </div>
-                { appAddress ? <>
-                    <h2>Inspect</h2>
-                    <Inspect chain={chainId} appAddress={appAddress} />
-                    <h2>Input</h2>
-                    <Input chain={chainId} appAddress={appAddress} />
-                    <h2>Portals</h2>
-                    <Portals chain={chainId} appAddress={appAddress} />
-                    <h2>Reports</h2>
-                    <Reports chain={chainId} appAddress={appAddress} />
-                    <h2>Notices</h2>
-                    <Notices chain={chainId} appAddress={appAddress} />
-                    <h2>Vouchers</h2>
-                    <Vouchers chain={chainId} appAddress={appAddress} />
-                    <h2>Delegate Call Voucher</h2>
-                    <DelegateCallVouchers chain={chainId} appAddress={appAddress} />
-                </> : <></> }
-            </> : <></>
-            }
-        </div>
-    );
+  return (
+    <div>
+      <Network onChange={connect} />
+      {chainId ? (
+        <>
+          <br />
+          <div>
+            Dapp Address:{" "}
+            <input
+              type="text"
+              value={appAddress}
+              onChange={(e) => {
+                handleAddres(e.target.value);
+              }}
+            />
+          </div>
+          <br />
+          <div>
+            Node Address:{" "}
+            <input
+              type="text"
+              value={nodeAddress}
+              onChange={(e) => {
+                setNodeAddress(e.target.value);
+              }}
+            />
+            <br />
+          </div>
+          {appAddress && nodeAddress ? (
+            <>
+              <h2>Inspect</h2>
+              <Inspect
+                chain={chainId}
+                appAddress={appAddress}
+                nodeAddress={nodeAddress}
+              />
+              <h2>Input</h2>
+              <Input
+                chain={chainId}
+                appAddress={appAddress}
+                nodeAddress={nodeAddress}
+              />
+              <h2>Portals</h2>
+              <Portals
+                chain={chainId}
+                appAddress={appAddress}
+                nodeAddress={nodeAddress}
+              />
+              <h2>Reports</h2>
+              <Reports
+                chain={chainId}
+                appAddress={appAddress}
+                nodeAddress={nodeAddress}
+              />
+              <h2>Outputs</h2>
+              <Outputs
+                chain={chainId}
+                appAddress={appAddress}
+                nodeAddress={nodeAddress}
+              />
+            </>
+          ) : (
+            <></>
+          )}
+        </>
+      ) : (
+        <></>
+      )}
+    </div>
+  );
 };
 
 export default App;
