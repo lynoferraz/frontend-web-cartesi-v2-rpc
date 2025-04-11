@@ -77,7 +77,7 @@ export const Network: FC<Propos> = ({ onChange }) => {
       setConnectedChain(chain);
       setWalletAddress(accounts[0]);
 
-      onChange(chain, accounts[0]);
+      onChange(parseInt(chain), accounts[0]);
     } catch (error) {
       console.log(error);
     }
@@ -88,7 +88,6 @@ export const Network: FC<Propos> = ({ onChange }) => {
       <div>
         <select
           onChange={(e) => {
-            console.log(e.target.value, chains);
             if (chains[parseInt(e.target.value)]) {
               setChain(e.target.value);
             } else {

@@ -5,9 +5,7 @@ import {
   formatEther,
   fromHex,
   isHex,
-  parseAbiItem,
   parseAbiParameters,
-  parseEventLogs,
   size,
   slice,
 } from "viem";
