@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Address,
   BaseError,
@@ -11,13 +11,7 @@ import {
   size,
   slice,
 } from "viem";
-import {
-  chains,
-  getChain,
-  getClient,
-  getWalletClient,
-  getL2Client,
-} from "./utils/chain";
+import { chains, getClient, getWalletClient, getL2Client } from "./utils/chain";
 import { INodeComponentProps } from "./utils/models";
 import { Output } from "@cartesi/viem";
 
