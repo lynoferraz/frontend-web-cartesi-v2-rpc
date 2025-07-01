@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@cartesi/viem": "2.0.0-alpha.4",
+    "@cartesi/viem": "2.0.0-alpha.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "viem": "^2.26.2"

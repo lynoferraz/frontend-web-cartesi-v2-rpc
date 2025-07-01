@@ -1,13 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { fromHex, isHex } from "viem";
 import { Report } from "@cartesi/viem";
 import { getL2Client } from "./utils/chain";
 import { INodeComponentProps } from "./utils/models";
 
+type RpcFilter = {
+  limit?: number;
+  offset?: number;
+  epochIndex?: bigint;
+  inputIndex?: bigint;
+};
+
 async function getReports(
   appAddress: string,
   nodeAddress: string,
-  filter: Record<string, unknown>,
+  filter?: RpcFilter,
 ) {
   if (!nodeAddress) return [];
   const client = await getL2Client(nodeAddress + "/rpc");
@@ -24,14 +31,16 @@ export const Reports: React.FC<INodeComponentProps> = (
 ) => {
   const [fetching, setFetching] = useState<boolean>(false);
   const [error, setError] = useState<string>();
-  const rpcFilter = useRef<Record<string, unknown>>({});
   const [showFilter, setShowFilter] = useState<boolean>(false);
   const [reports, setReports] = useState<Report[]>([]);
-  // const [reportToExecute, setReportToExecute] = useState<ExtendedReport>();
+  const [limit, setLimit] = useState<number>();
+  const [offset, setOffset] = useState<number>();
+  const [epochIndex, setEpochIndex] = useState<number>();
+  const [inputIndex, setInputIndex] = useState<number>();
 
   useEffect(() => {
     setFetching(true);
-    getReports(props.appAddress, props.nodeAddress, rpcFilter.current)
+    getReports(props.appAddress, props.nodeAddress)
       .then((out) => setReports(out))
       .finally(() => setFetching(false));
   }, [props]);
@@ -42,11 +51,12 @@ export const Reports: React.FC<INodeComponentProps> = (
       return;
     }
     setFetching(true);
-    const out = await getReports(
-      props.appAddress,
-      props.nodeAddress,
-      rpcFilter.current,
-    );
+    const out = await getReports(props.appAddress, props.nodeAddress, {
+      limit,
+      offset,
+      epochIndex: epochIndex ? BigInt(epochIndex) : undefined,
+      inputIndex: inputIndex ? BigInt(inputIndex) : undefined,
+    });
     setReports(out);
     setFetching(false);
   }
@@ -55,10 +65,6 @@ export const Reports: React.FC<INodeComponentProps> = (
   if (error) return <p>Oh no... {error}</p>;
 
   if (!reports) return <p>No reports</p>;
-
-  function handleFilterChange(key: string, value: unknown) {
-    rpcFilter.current[key] = value;
-  }
 
   const decoder = new TextDecoder("utf8", { fatal: true });
 
@@ -69,45 +75,29 @@ export const Reports: React.FC<INodeComponentProps> = (
         Limit:{" "}
         <input
           type="number"
-          value={(rpcFilter.current.limit as number) || ""}
-          onChange={(e) => handleFilterChange("limit", e.target.value)}
+          value={limit || ""}
+          onChange={(e) => setLimit(parseInt(e.target.value))}
         />
         <br />
         Offset:{" "}
         <input
           type="number"
-          value={(rpcFilter.current.offset as number) || ""}
-          onChange={(e) => handleFilterChange("limit", e.target.value)}
-        />
-        <br />
-        Type:{" "}
-        <input
-          type="text"
-          value={(rpcFilter.current.report_type as string) || ""}
-          onChange={(e) => handleFilterChange("report_type", e.target.value)}
+          value={offset || ""}
+          onChange={(e) => setOffset(parseInt(e.target.value))}
         />
         <br />
         Epoch:{" "}
         <input
           type="number"
-          value={(rpcFilter.current.epoch_index as number) || ""}
-          onChange={(e) => handleFilterChange("epoch_index", e.target.value)}
+          value={epochIndex || ""}
+          onChange={(e) => setEpochIndex(parseInt(e.target.value))}
         />
         <br />
         Input:{" "}
         <input
           type="text"
-          value={(rpcFilter.current.input_index as number) || ""}
-          onChange={(e) => handleFilterChange("input_index", e.target.value)}
-        />
-        <br />
-        Voucher address:{" "}
-        <input
-          type="text"
-          value={(rpcFilter.current.voucher_address as string) || ""}
-          onChange={(e) =>
-            handleFilterChange("voucher_address", e.target.value)
-          }
+          value={inputIndex || ""}
+          onChange={(e) => setInputIndex(parseInt(e.target.value))}
         />
       </div>
       <br />

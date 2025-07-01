@@ -1,17 +1,34 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Address,
   BaseError,
   decodeAbiParameters,
   formatEther,
   fromHex,
+  Hex,
   isHex,
   parseAbiParameters,
   size,
   slice,
 } from "viem";
-import { getClient, getWalletClient, getL2Client, chains } from "./utils/chain";
+import {
+  chains,
+  getChain,
+  getClient,
+  getWalletClient,
+  getL2Client,
+} from "./utils/chain";
 import { INodeComponentProps } from "./utils/models";
 import { Output } from "@cartesi/viem";
+
+type RpcFilter = {
+  limit?: number;
+  offset?: number;
+  epochIndex?: bigint;
+  inputIndex?: bigint;
+  outputType?: Hex;
+  voucherAddress?: Address;
+};
 
 function inferVoucherPayload(voucherPayload: `0x${string}`): string {
   const selector =
@@ -96,7 +113,7 @@ function inferVoucherPayload(voucherPayload: `0x${string}`): string {
 async function getOutputs(
   appAddress: string,
   nodeAddress: string,
-  filter: Record<string, unknown>,
+  filter?: RpcFilter,
 ) {
   if (!nodeAddress) return [];
   const client = await getL2Client(nodeAddress + "/rpc");
@@ -123,21 +140,25 @@ export const Outputs: React.FC<INodeComponentProps> = (
 ) => {
   const [fetching, setFetching] = useState<boolean>(false);
   const [error, setError] = useState<string>();
-  const rpcFilter = useRef<Record<string, unknown>>({});
   const [showFilter, setShowFilter] = useState<boolean>(false);
   const [outputs, setOutputs] = useState<Output[]>([]);
   const [lastAcceptedEpoch, setLastAcceptedEpoch] = useState<bigint>(BigInt(0));
   const [outputMsg, setOutputMsg] = useState<string>();
-
+  const [limit, setLimit] = useState<number>();
+  const [offset, setOffset] = useState<number>();
+  const [outputType, setOutputType] = useState<string>();
+  const [epochIndex, setEpochIndex] = useState<number>();
+  const [inputIndex, setInputIndex] = useState<number>();
+  const [voucherAddress, setVoucherAddress] = useState<string>();
   useEffect(() => {
     setFetching(true);
     setOutputMsg(undefined);
-    getOutputs(props.appAddress, props.nodeAddress, rpcFilter.current)
+    getOutputs(props.appAddress, props.nodeAddress)
       .then((out) => setOutputs(out))
       .finally(() => setFetching(false));
-    getLastAcceptedEpoch(props.appAddress, props.nodeAddress).then((epoch) =>
-      setLastAcceptedEpoch(epoch),
-    );
+    getLastAcceptedEpoch(props.appAddress, props.nodeAddress)
+      .then((epoch) => setLastAcceptedEpoch(epoch))
+      .catch((e) => console.warn(`Error getting epoch: ${e}`));
   }, [props]);
 
   async function reloadOutputs() {
@@ -148,31 +169,29 @@ export const Outputs: React.FC<INodeComponentProps> = (
     setFetching(true);
     setOutputMsg(undefined);
     reloadOutputProperties();
-    const out = await getOutputs(
-      props.appAddress,
-      props.nodeAddress,
-      rpcFilter.current,
-    );
-    setOutputs(out);
-    setFetching(false);
+    getOutputs(props.appAddress, props.nodeAddress, {
+      limit,
+      offset,
+      epochIndex: epochIndex ? BigInt(epochIndex) : undefined,
+      inputIndex: inputIndex ? BigInt(inputIndex) : undefined,
+      outputType: outputType ? (outputType as Hex) : undefined,
+      voucherAddress: voucherAddress ? (voucherAddress as Address) : undefined,
+    })
+      .then((out) => setOutputs(out))
+      .catch((e) => console.warn(`Error getting epoch: ${e}`))
+      .finally(() => setFetching(false));
   }
 
   async function reloadOutputProperties() {
-    const epoch = await getLastAcceptedEpoch(
-      props.appAddress,
-      props.nodeAddress,
-    );
-    setLastAcceptedEpoch(epoch);
+    getLastAcceptedEpoch(props.appAddress, props.nodeAddress)
+      .then((epoch) => setLastAcceptedEpoch(epoch))
+      .catch((e) => console.warn(`Error getting epoch: ${e}`));
   }
 
   if (fetching) return <p>Loading...</p>;
   if (error) return <p>Oh no... {error}</p>;
 
   if (!outputs) return <p>No outputs</p>;
-
-  function handleFilterChange(key: string, value: unknown) {
-    rpcFilter.current[key] = value;
-  }
 
   async function validateOutput(output: Output) {
     setOutputMsg(undefined);
@@ -278,45 +297,43 @@ export const Outputs: React.FC<INodeComponentProps> = (
         Limit:{" "}
         <input
           type="number"
-          value={(rpcFilter.current.limit as number) || ""}
-          onChange={(e) => handleFilterChange("limit", e.target.value)}
+          value={limit || ""}
+          onChange={(e) => setLimit(parseInt(e.target.value))}
         />
         <br />
         Offset:{" "}
         <input
           type="number"
-          value={(rpcFilter.current.offset as number) || ""}
-          onChange={(e) => handleFilterChange("limit", e.target.value)}
+          value={offset || ""}
+          onChange={(e) => setOffset(parseInt(e.target.value))}
         />
         <br />
         Type:{" "}
         <input
           type="text"
-          value={(rpcFilter.current.output_type as string) || ""}
-          onChange={(e) => handleFilterChange("output_type", e.target.value)}
+          value={outputType || ""}
+          onChange={(e) => setOutputType(e.target.value)}
         />
         <br />
         Epoch:{" "}
         <input
           type="number"
-          value={(rpcFilter.current.epoch_index as number) || ""}
-          onChange={(e) => handleFilterChange("epoch_index", e.target.value)}
+          value={epochIndex || ""}
+          onChange={(e) => setEpochIndex(parseInt(e.target.value))}
         />
         <br />
         Input:{" "}
         <input
           type="text"
-          value={(rpcFilter.current.input_index as number) || ""}
-          onChange={(e) => handleFilterChange("input_index", e.target.value)}
+          value={inputIndex || ""}
+          onChange={(e) => setInputIndex(parseInt(e.target.value))}
         />
         <br />
         Voucher address:{" "}
         <input
           type="text"
-          value={(rpcFilter.current.voucher_address as string) || ""}
-          onChange={(e) =>
-            handleFilterChange("voucher_address", e.target.value)
-          }
+          value={voucherAddress || ""}
+          onChange={(e) => setVoucherAddress(e.target.value)}
         />
       </div>
       <br />
@@ -333,6 +350,9 @@ export const Outputs: React.FC<INodeComponentProps> = (
             <th>Input Id</th>
             <th>Output Index</th>
             <th>Type</th>
+            <th>Value</th>
+            <th>Destination</th>
+            <th>Actions</th>
             <th>Payload</th>
           </tr>
         </thead>
@@ -373,7 +393,7 @@ export const Outputs: React.FC<INodeComponentProps> = (
                   if (!isHex(payload)) throw new Error("not hex");
                   payload = decoder.decode(fromHex(payload, "bytes"));
                 } catch {
-                  payload = payload + " (hex)";
+                  payload = "(hex) " + payload;
                 }
                 break;
               default:
@@ -385,12 +405,20 @@ export const Outputs: React.FC<INodeComponentProps> = (
                 <td>{n.inputIndex}</td>
                 <td>{n.index}</td>
                 <td>{type}</td>
-                {type.toLowerCase() === "voucher" ? <td>{value}</td> : null}
+                {type.toLowerCase() === "voucher" ? (
+                  <td>{value}</td>
+                ) : (
+                  <td></td>
+                )}
                 {type.toLowerCase() === "voucher" ? (
                   <td>{destination}</td>
-                ) : null}
+                ) : (
+                  <td></td>
+                )}
                 <td>{renderActionButton(n)}</td>
-                <td>{payload}</td>
+                <td title={payload}>
+                  {payload.length > 80 ? `${payload.slice(0, 80)}...` : payload}
+                </td>
               </tr>
             );
           })}
