@@ -123,10 +123,15 @@ async function getLastAcceptedEpoch(appAddress: string, nodeAddress: string) {
   if (!nodeAddress) return BigInt(0);
   const client = await getL2Client(nodeAddress + "/rpc");
   if (!client) return BigInt(0);
-  const outputResponse = await client.getLastAcceptedEpochIndex({
-    application: appAddress,
-  });
-  return outputResponse;
+  try {
+    const outputResponse = await client.getLastAcceptedEpochIndex({
+      application: appAddress,
+    });
+    return outputResponse;
+  } catch (error) {
+    console.log(error.details);
+    return BigInt(0);
+  }
 }
 
 export const Outputs: React.FC<INodeComponentProps> = (
